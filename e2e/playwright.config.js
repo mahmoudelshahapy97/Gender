@@ -48,7 +48,7 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: ".auth/admin.json" },
       dependencies: ["setup"],
-      testIgnore: [/global\.setup\.js/, /00-auth\.spec\.js/],
+      testIgnore: [/global\.setup\.js/, /00-auth\.spec\.js/, /demo\.spec\.js/],
     },
     // 00-auth.spec.js runs signed out on purpose, to exercise the login page
     // and role boundaries themselves -- no storageState, but it still depends
@@ -58,6 +58,15 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testMatch: /00-auth\.spec\.js/,
       dependencies: ["setup"],
+    },
+    // A recorded tour for people to watch, not a correctness check: videos
+    // and screenshots land in e2e/artifacts/. It signs in through the real
+    // login page itself, and slowMo keeps the video watchable.
+    //   E2E_DEMO=1 ./e2e/run.sh --project=demo
+    {
+      name: "demo",
+      testMatch: /demo\.spec\.js/,
+      use: { ...devices["Desktop Chrome"], launchOptions: { slowMo: 120 } },
     },
   ],
 });

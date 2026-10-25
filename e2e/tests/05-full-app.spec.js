@@ -259,11 +259,20 @@ test("every page fits a phone screen, and the menu reaches them", async ({ brows
     await next.click();
     await expect(page.getByText(/^21–40 of /)).toBeVisible();
 
+    // Through the menu, page after page: each pick must leave the page
+    // usable. The menu's backdrop once stayed behind after a lazy page
+    // loaded, and the second tap on the menu button never landed.
     await page.goto("/");
-    await page.getByRole("button", { name: "Open navigation" }).click();
-    await page.getByRole("link", { name: "Snapshots", exact: true }).click();
-    await expect(page).toHaveURL(/\/snapshots$/);
-    await expect(page.getByRole("heading", { name: "Snapshots", level: 5 })).toBeVisible();
+    for (const [label, path] of [
+      ["Snapshots", "/snapshots"],
+      ["Analytics", "/analytics"],
+      ["Cameras", "/cameras"],
+    ]) {
+      await page.getByRole("button", { name: "Open navigation" }).click();
+      await page.getByRole("link", { name: label, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(page.getByRole("heading", { name: label, level: 5 })).toBeVisible();
+    }
     expect(problems, problems.join("\n")).toEqual([]);
   } finally {
     await context.close();

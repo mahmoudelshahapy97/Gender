@@ -11,6 +11,7 @@
 #   docker compose exec -T postgres psql -U gender -d gender_db < database/seed.sql
 #   E2E_ADMIN_PASSWORD=... ./e2e/run.sh                    # whole suite
 #   E2E_ADMIN_PASSWORD=... ./e2e/run.sh tests/03-analytics.spec.js  # one file
+#   E2E_DEMO=1 E2E_ADMIN_PASSWORD=... ./e2e/run.sh --project=demo  # recorded tour -> e2e/artifacts/
 #
 # Results land in e2e/playwright-report (HTML), e2e/results.json and
 # e2e/test-results (screenshots, traces, video of any failure).
@@ -42,6 +43,8 @@ docker run --rm \
   -e BASE_URL="${BASE_URL}" \
   -e E2E_ADMIN_USERNAME="${E2E_ADMIN_USERNAME:-admin}" \
   -e E2E_ADMIN_PASSWORD="${E2E_ADMIN_PASSWORD:-}" \
+  -e E2E_DEMO="${E2E_DEMO:-}" \
+  -e MAILPIT_URL="${MAILPIT_URL:-}" \
   -e CI=1 \
   -v "${HERE}:/e2e" \
   -v gender-e2e-node-modules:/e2e/node_modules \

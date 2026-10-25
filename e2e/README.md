@@ -39,6 +39,31 @@ To run against a different origin, such as a staging deploy or the Vite dev serv
 BASE_URL=http://localhost:5173 ./e2e/run.sh
 ```
 
+## Recorded tour: videos and screenshots
+
+`tests/demo.spec.js` is not a check but a recording for people to watch. It
+signs in through the real login page and walks the console the way an operator
+would: every Analytics tab, the location filter, Visits filtered by gender, a
+snapshot frame, a camera's live view with people being labelled, then the
+System, Workspaces and Users pages. It runs only when asked to:
+
+```bash
+E2E_DEMO=1 E2E_ADMIN_PASSWORD=<BOOTSTRAP_ADMIN_PASSWORD> ./e2e/run.sh --project=demo
+```
+
+It writes to `e2e/artifacts/`, which git ignores:
+
+| Path | What |
+| --- | --- |
+| `videos/01-desktop-dark.webm` | the tour at 1440×900, dark mode (about a minute) |
+| `videos/02-desktop-light.webm` | the same tour in light mode, starting from the login page |
+| `videos/03-phone.webm` | 390 px wide, through the menu, ending on the live camera |
+| `screenshots/<tour>/NN-<step>.png` | one screenshot per step of each tour |
+
+It needs the seed loaded. The seed's Main Entrance camera is enabled on the
+demo stream, so the live view and the newest snapshots show real people.
+`slowMo` in the `demo` project keeps the videos watchable.
+
 ## Two kinds of data
 
 **The seed is a fixture.** Specs 03 and 04 assert against `database/seed.sql`:

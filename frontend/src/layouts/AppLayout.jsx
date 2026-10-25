@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
@@ -303,8 +303,14 @@ export function AppLayout({ mode, onToggleMode }) {
           {!workspace.ready ? (
             <Loading label="Loading workspaces…" />
           ) : workspace.active ? (
+            // Pages are lazy chunks. Suspending here, not at the router, keeps
+            // the shell mounted while one loads: the router-level boundary hid
+            // the whole layout mid-way through the phone menu's close
+            // transition and left its backdrop over the page, eating taps.
             // Keyed on the workspace, so switching reloads the open page.
-            <Outlet key={workspace.active.workspace_id} />
+            <Suspense fallback={<Loading label="Loading…" height="60vh" />}>
+              <Outlet key={workspace.active.workspace_id} />
+            </Suspense>
           ) : workspace.error ? (
             <ErrorState error={workspace.error} onRetry={workspace.reload} />
           ) : (
