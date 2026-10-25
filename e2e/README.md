@@ -31,7 +31,7 @@ Results land in:
 | --- | --- |
 | `playwright-report/` | HTML report, opened with `npx playwright show-report` |
 | `results.json` | machine-readable summary |
-| `test-results/` | screenshots of every page the specs visit; video and trace for failures |
+| `test-results/` | screenshots of every page the specs visit (`light-*`, `dark-*`, `mobile-*` from spec 05); video and trace for failures |
 
 To run against a different origin, such as a staging deploy or the Vite dev server:
 
@@ -90,14 +90,16 @@ state:
 | `02-camera-lifecycle.spec.js` | Register a camera through the form, validation, start/stop its worker, real counting off the demo stream |
 | `03-analytics.spec.js` | InsightEye's two endpoints and the extended reports against the seed; every Analytics tab draws; the location cascade; the dashboard |
 | `04-visits-snapshots.spec.js` | Visits filtered by gender, paging, CSV export; the Snapshots grid and frame dialog |
+| `05-full-app.spec.js` | The System page; frames on the live MJPEG view; a viewer cannot control a camera; an account's whole life on the Users page (create, change role, admin reset, own password change, deactivate, delete); a session that survives an expired access token; every page at phone width with no sideways scroll and reachable paging; every page in light and dark mode |
 | `06-workspaces.spec.js` | Create a workspace, a camera in it, switch to it, a non-member is shut out, delete it |
 | `07-teardown.spec.js` | Edit the camera's place, stop, delete; check that the seed survived |
 
 The password-reset test reads the emailed code from a [mailpit](https://mailpit.axllent.org)
 SMTP sink. It runs only when the API has `SMTP_HOST` pointed at that sink
 (`SMTP_PORT=1025`, `SMTP_STARTTLS=false`) and `MAILPIT_URL` (for example
-`http://mailpit:8025`) is passed to the test container. Otherwise it is skipped,
-and the compose file does not include mailpit.
+`http://mailpit:8025`) is passed to the test container. Otherwise it is skipped.
+The compose file does not include mailpit; add `axllent/mailpit` to the stack in
+a compose override and pass the `SMTP_*` values to the api service to run it.
 
 Anything that has to survive between files is re-read from the API
 (`findCamera`), never kept in a module variable, because each spec file gets a

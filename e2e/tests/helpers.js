@@ -4,7 +4,8 @@
  * The specs are ordered files run by a single worker (see playwright.config.js),
  * so they form one story: 01 checks the shell, 02 registers a camera and
  * watches it count, 03 reads the analytics the seed provides, 04 the visits and
- * snapshots, 06 the workspace walls, 07 tears down what 02 created. State that has to survive between files is
+ * snapshots, 05 the rest of the console (accounts, phone width, both themes),
+ * 06 the workspace walls, 07 tears down what 02 created. State that has to survive between files is
  * re-read from the API rather than kept in a module variable, because each spec
  * file gets a fresh module registry.
  */

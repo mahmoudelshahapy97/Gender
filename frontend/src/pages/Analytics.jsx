@@ -141,7 +141,7 @@ function PerCamera({ params, paramsKey, theme }) {
       <Grid size={12}>
         <Card>
           <TableContainer>
-            <Table size="small">
+            <Table size="small" sx={{ "& th, & td": { px: 1.5 } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Camera</TableCell>
@@ -361,7 +361,7 @@ function ByLocation({ params, paramsKey, theme }) {
       <Grid size={12}>
         <Card>
           <TableContainer>
-            <Table size="small">
+            <Table size="small" sx={{ "& th, & td": { px: 1.5 } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>{LOCATION_LEVELS.find((l) => l.column === groupBy)?.label}</TableCell>
@@ -488,7 +488,14 @@ export default function Analytics() {
       />
       <GenderFilterBar filters={filters} setFilters={setFilters} reset={reset} />
 
-      <Tabs value={tab} onChange={(_, next) => setTab(next)} variant="scrollable" sx={{ mb: 2 }}>
+      <Tabs
+        value={tab}
+        onChange={(_, next) => setTab(next)}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
+        sx={{ mb: 2 }}
+      >
         {TABS.map((t) => (
           <Tab key={t.key} value={t.key} label={t.label} />
         ))}

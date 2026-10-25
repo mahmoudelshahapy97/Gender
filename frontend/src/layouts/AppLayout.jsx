@@ -245,9 +245,13 @@ export function AppLayout({ mode, onToggleMode }) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            {currentTitle}
-          </Typography>
+          {/* On a phone the page's own heading names it; the bar keeps its room
+              for the workspace, health and account controls. */}
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography variant="h6" noWrap sx={{ display: { xs: "none", sm: "block" } }}>
+              {currentTitle}
+            </Typography>
+          </Box>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <WorkspaceSwitcher />
             <BackendStatus />

@@ -153,6 +153,13 @@ export default function Visits() {
               page={page}
               rowsPerPage={rowsPerPage}
               rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              // On a phone the page-size picker pushes the next-page arrow off
+              // the edge; the range and the arrows are what matter there.
+              sx={{
+                "& .MuiTablePagination-selectLabel, & .MuiTablePagination-input": {
+                  display: { xs: "none", sm: "inline-flex" },
+                },
+              }}
               onPageChange={(_, next) => setPage(next)}
               onRowsPerPageChange={(e) => {
                 setRowsPerPage(Number(e.target.value));
