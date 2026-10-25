@@ -1,0 +1,16 @@
+# ByteTrack tuned for counting people at ~5 processed fps.
+#
+# A visit is one track, so the thing to avoid is a person splitting into
+# several ids. The stock buffer (30 frames, calibrated for 30 fps) forgets a
+# person after 6 s at our rate - long enough here, since visit_gap_seconds
+# decides when a visit ends - and the slightly lower match threshold keeps an
+# id through the larger per-frame jumps a 5 fps stream has.
+# Keep PEOPLE_CONFIDENCE at or above track_high_thresh, or tracks start on
+# every weak box and the counts inflate.
+tracker_type: bytetrack
+track_high_thresh: 0.5
+track_low_thresh: 0.1
+new_track_thresh: 0.6
+track_buffer: 30
+match_thresh: 0.8
+fuse_score: True

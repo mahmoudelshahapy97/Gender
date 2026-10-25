@@ -1,0 +1,159 @@
+name: gender
+
+# Full stack: database + API + operator console + test RTSP + object storage.
+#
+#   docker compose up --build                          everything
+#   docker compose up -d postgres                      just the database
+#
+# Host ports default to ones no other stack on this machine uses (lost-found
+# holds 5436/8003/8082/8556/9000/9001): Postgres 5437, API 8004, console 8083,
+# RTSP 8557, MinIO 9002/9003. Override them in the root .env.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gender_db}
+      POSTGRES_USER: ${POSTGRES_USER:-gender}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gender_pass}
+    ports:
+      # Host port only. Inside the network the API always uses 5432.
+      - "${POSTGRES_HOST_PORT:-5437}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # There is no Alembic: schema.sql *is* the schema, and Postgres runs it
+      # once, on the first boot of an empty volume. Mounted as a single file so
+      # seed.sql and queries.sql sit alongside it without being executed.
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      # The rest, readable inside the container for running by hand.
+      - ./database:/sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gender} -d ${POSTGRES_DB:-gender_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Snapshot frames are written to MinIO (with a Postgres fallback).
+      minio-init:
+        condition: service_completed_successfully
+    env_file:
+      - ./backend/.env
+    environment:
+      # Overrides .env: inside the network Postgres is reachable by service name
+      # on its container port, whatever the host publishes it as.
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-gender_db}
+      POSTGRES_USER: ${POSTGRES_USER:-gender}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gender_pass}
+      CORS_ORIGINS: '["http://localhost:8083","http://localhost:5173"]'
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+      MINIO_BUCKET: ${MINIO_BUCKET:-gender}
+      MINIO_SECURE: "false"
+    ports:
+      - "${API_HOST_PORT:-8004}:8000"
+    volumes:
+      # people.pt and gender.pt (see backend/models/README.md).
+      - ./backend/models:/app/models:ro
+      - ./backend/logs:/app/logs
+      # Versioned schema changes, applied at startup (app/core/migrations.py).
+      - ./database/migrations:/app/migrations:ro
+    # Workers flush their open visits before the container dies.
+    stop_grace_period: 30s
+    deploy:
+      # NOT scalable: stream workers are in-process asyncio tasks holding
+      # per-camera tracker state. Two replicas would open every camera twice
+      # and count every person twice.
+      replicas: 1
+      # The models run on the GPU (MODEL_DEVICE=cuda in backend/.env).
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  web:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # nginx proxies /api, /health and the backend's /docs to FastAPI.
+      GD_API_URL: http://api:8000
+    ports:
+      - "${WEB_HOST_PORT:-8083}:80"
+
+  # Local RTSP server for testing without a real camera. The path plays a clip
+  # from backend/videos on demand, looping until the camera stops.
+  #
+  # Register the camera as rtsp://mediamtx:8554/gender -- that URL is resolved
+  # by the api container. From the host it is rtsp://localhost:8557/gender.
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    restart: unless-stopped
+    environment:
+      MTX_PROTOCOLS: tcp
+      MTX_PATHS_GENDER_RUNONDEMAND: >-
+        ffmpeg -re -stream_loop -1 -i /videos/gender.mp4 -c copy -f rtsp
+        rtsp://localhost:8554/gender
+      MTX_PATHS_GENDER_RUNONDEMANDRESTART: "yes"
+    volumes:
+      - ./backend/videos:/videos:ro
+    ports:
+      - "${RTSP_HOST_PORT:-8557}:8554"
+
+  # S3-compatible object storage for the snapshot frames. Inside the network:
+  # http://minio:9000. Console: http://localhost:${MINIO_CONSOLE_HOST_PORT:-9003}.
+  #
+  # Chainguard's build of MinIO, pinned by digest (MinIO no longer publishes
+  # community images); the same image lost-found uses.
+  minio:
+    image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    ports:
+      - "${MINIO_API_HOST_PORT:-9002}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9003}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: creates the bucket, then exits. Re-running it is harmless.
+  minio-init:
+    image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mc alias set gd http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing "gd/$$MINIO_BUCKET"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+      MINIO_BUCKET: ${MINIO_BUCKET:-gender}
+    restart: "no"
+
+volumes:
+  pgdata:
+  miniodata:

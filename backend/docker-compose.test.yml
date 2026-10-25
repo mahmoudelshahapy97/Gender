@@ -1,0 +1,74 @@
+# Backend tests against a disposable Postgres and MinIO. Nothing is published
+# on the host, so it runs beside any other stack:
+#
+#   docker compose -p gender-test -f backend/docker-compose.test.yml run --rm tests
+#   docker compose -p gender-test -f backend/docker-compose.test.yml down -v
+#
+# The source is bind-mounted, so no rebuild is needed after a change. Add
+# `-m slow` to the pytest command for the model smoke tests (they read the
+# weights in backend/models).
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gender_test
+      POSTGRES_USER: gender
+      POSTGRES_PASSWORD: gender_pass
+    volumes:
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gender -d gender_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  minio:
+    image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: gender-test
+      MINIO_ROOT_PASSWORD: gender-test-secret
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  tests:
+    build:
+      context: .
+      args:
+        TORCH_VARIANT: cpu
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: test-only-secret-key-not-for-production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: gender_test
+      POSTGRES_USER: gender
+      POSTGRES_PASSWORD: gender_pass
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: gender-test
+      MINIO_SECRET_KEY: gender-test-secret
+      MINIO_BUCKET: gender-test
+      MODEL_DEVICE: cpu
+      MIGRATIONS_DIR: /app/migrations
+    volumes:
+      - ./app:/app/app:ro
+      - ./tests:/app/tests:ro
+      - ./trackers:/app/trackers:ro
+      - ./models:/app/models:ro
+      - ./videos:/app/videos:ro
+      - ./pytest.ini:/app/pytest.ini:ro
+      - ../database/migrations:/app/migrations:ro
+    working_dir: /app
+    command: ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider"]
