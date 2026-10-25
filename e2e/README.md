@@ -90,7 +90,7 @@ It logs in as the bootstrap admin through the real `/login` page and saves the
 browser's storageState (the access/refresh tokens in `localStorage`, plus the
 httpOnly cookie the image routes accept) to `.auth/admin.json`. It also creates
 one operator and one viewer account for the role assertions. `chromium`, the
-project that runs `01`–`07`, starts every test already signed in.
+project that runs `01`–`08`, starts every test already signed in.
 
 The bare `request` fixture used for direct API assertions is a *separate*
 context from the browser. It only inherits the cookie, and the JSON API
@@ -117,7 +117,8 @@ state:
 | `04-visits-snapshots.spec.js` | Visits filtered by gender, paging, CSV export; the Snapshots grid and frame dialog |
 | `05-full-app.spec.js` | The System page; frames on the live MJPEG view; a viewer cannot control a camera; an account's whole life on the Users page (create, change role, admin reset, own password change, deactivate, delete); a session that survives an expired access token; every page at phone width with no sideways scroll and reachable paging; every page in light and dark mode |
 | `06-workspaces.spec.js` | Create a workspace, a camera in it, switch to it, a non-member is shut out, delete it |
-| `07-teardown.spec.js` | Edit the camera's place, stop, delete; check that the seed survived |
+| `07-notifications.spec.js` | Alert thresholds on the camera form, a crowding alert arriving live (toast, bell, page), opening it, read state, a camera going offline and back online, the alert mailed to an opted-in account |
+| `08-teardown.spec.js` | Edit the camera's place, stop, delete; check that the seed survived |
 
 The password-reset test reads the emailed code from a [mailpit](https://mailpit.axllent.org)
 SMTP sink. It runs only when the API has `SMTP_HOST` pointed at that sink
@@ -125,6 +126,14 @@ SMTP sink. It runs only when the API has `SMTP_HOST` pointed at that sink
 `http://mailpit:8025`) is passed to the test container. Otherwise it is skipped.
 The compose file does not include mailpit; add `axllent/mailpit` to the stack in
 a compose override and pass the `SMTP_*` values to the api service to run it.
+The same sink lets `07-notifications.spec.js` check that an opted-in account is
+mailed the offline alert (`E2E_ADMIN_EMAIL`, default `admin@insighteye.local`).
+
+`07` waits for real alerts: a crowding alert off the demo stream, and a camera
+with a dead RTSP path going offline and, once fixed, back online. Its waits fit
+the defaults, but on a test stack it runs in about two minutes with
+`ALERT_SUSTAIN_S=3`, `CAMERA_OFFLINE_AFTER_S=20` and
+`WORKER_SUPERVISION_INTERVAL_S=5` on the api service.
 
 Anything that has to survive between files is re-read from the API
 (`findCamera`), never kept in a module variable, because each spec file gets a
@@ -145,6 +154,6 @@ correctly but wrote nothing is the failure worth catching, so the write specs
 read the row back. In particular, `02` checks that a blank override is *absent*
 from `settings`, not stored as `0`.
 
-**`07` verifies the seed survived.** Deleting a camera cascades to its visits
+**`08` verifies the seed survived.** Deleting a camera cascades to its visits
 and snapshots, so a stray delete would quietly gut the fixture and make the
 next run fail somewhere unrelated.

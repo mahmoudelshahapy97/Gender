@@ -74,13 +74,34 @@ const OVERRIDE_FIELDS = [
   },
 ];
 
+/**
+ * Occupancy alerts (backend/app/services/alerts.py). Also in `settings`, and
+ * also blank = off; a count past one for ALERT_SUSTAIN_S raises one
+ * notification per crossing.
+ */
+const ALERT_FIELDS = [
+  {
+    key: "alert_max_people",
+    label: "Alert above",
+    help: "Notify when more people than this stay in view. Blank: no crowding alert.",
+  },
+  {
+    key: "alert_min_people",
+    label: "Alert below",
+    help: "Notify when fewer people than this stay in view, e.g. an unstaffed desk. Blank: off.",
+  },
+];
+
 const EMPTY = {
   name: "",
   rtsp_url: "",
   enabled: true,
   ...Object.fromEntries(LOCATION_FIELDS.map(({ key }) => [key, ""])),
   ...Object.fromEntries(OVERRIDE_FIELDS.map(({ key }) => [key, ""])),
+  ...Object.fromEntries(ALERT_FIELDS.map(({ key }) => [key, ""])),
 };
+
+const isBlank = (raw) => raw === "" || raw === null || raw === undefined;
 
 function validate(values) {
   const errors = {};
@@ -99,6 +120,22 @@ function validate(values) {
     if (Number.isNaN(value)) errors[key] = "Must be a number";
     else if (value < min || value > max) errors[key] = `Between ${min} and ${max}`;
   });
+
+  ALERT_FIELDS.forEach(({ key }) => {
+    const raw = values[key];
+    if (isBlank(raw)) return;
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 0) errors[key] = "A whole number, 0 or more";
+  });
+  if (
+    !errors.alert_max_people &&
+    !errors.alert_min_people &&
+    !isBlank(values.alert_max_people) &&
+    !isBlank(values.alert_min_people) &&
+    Number(values.alert_min_people) > Number(values.alert_max_people)
+  ) {
+    errors.alert_min_people = "Above the crowding limit";
+  }
 
   return errors;
 }
@@ -132,6 +169,7 @@ export default function CameraForm() {
       enabled: camera.enabled ?? true,
       ...Object.fromEntries(LOCATION_FIELDS.map(({ key }) => [key, camera[key] ?? ""])),
       ...Object.fromEntries(OVERRIDE_FIELDS.map(({ key }) => [key, settings[key] ?? ""])),
+      ...Object.fromEntries(ALERT_FIELDS.map(({ key }) => [key, settings[key] ?? ""])),
     });
   }, [camera]);
 
@@ -143,7 +181,7 @@ export default function CameraForm() {
 
   const payload = useMemo(() => {
     const settings = {};
-    OVERRIDE_FIELDS.forEach(({ key }) => {
+    [...OVERRIDE_FIELDS, ...ALERT_FIELDS].forEach(({ key }) => {
       const raw = values[key];
       // Omitted, not zeroed: an absent key is what "inherit the default" means.
       if (raw !== "" && raw !== null && raw !== undefined) settings[key] = Number(raw);
@@ -297,6 +335,38 @@ export default function CameraForm() {
                       slotProps={{
                         input: {
                           endAdornment: <InputAdornment position="end">{unit}</InputAdornment>,
+                        },
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+            <Card sx={{ mt: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Alerts
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+                  Everyone who can see this workspace is notified, and mailed if they opted in. The
+                  count has to stay past a limit for a few seconds, and alerts once per crossing.
+                </Typography>
+                <Divider sx={{ mb: 2.5 }} />
+                <Stack spacing={2.5}>
+                  {ALERT_FIELDS.map(({ key, label, help }) => (
+                    <TextField
+                      key={key}
+                      label={label}
+                      value={values[key]}
+                      onChange={setField(key)}
+                      error={Boolean(errors[key])}
+                      helperText={errors[key] || help}
+                      type="number"
+                      fullWidth
+                      slotProps={{
+                        htmlInput: { min: 0, step: 1 },
+                        input: {
+                          endAdornment: <InputAdornment position="end">people</InputAdornment>,
                         },
                       }}
                     />

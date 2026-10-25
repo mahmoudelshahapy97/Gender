@@ -7,7 +7,8 @@ its storage and takes counting down with it. Each pass:
 * deletes snapshot frames older than FRAME_RETENTION_DAYS from MinIO and
   clears them on their rows (the counts stay);
 * deletes snapshot and visit rows older than DATA_RETENTION_DAYS, with any
-  frame they still have (0 = keep the rows forever).
+  frame they still have (0 = keep the rows forever);
+* deletes notifications older than NOTIFICATION_RETENTION_DAYS (0 = keep).
 
 Turn it off with RETENTION_ENABLED=false where an external archiver owns the data.
 """
@@ -19,6 +20,7 @@ from typing import Optional
 
 from app.core.config import config
 from app.core.database import db_manager
+from app.services.notification_service import notification_service
 from app.services.object_store import object_store
 
 logger = logging.getLogger(__name__)
@@ -32,12 +34,14 @@ class PurgeReport:
     frames_deleted: int = 0
     snapshots_deleted: int = 0
     visits_deleted: int = 0
+    notifications_deleted: int = 0
 
     def as_dict(self) -> dict:
         return {
             "frames_deleted": self.frames_deleted,
             "snapshots_deleted": self.snapshots_deleted,
             "visits_deleted": self.visits_deleted,
+            "notifications_deleted": self.notifications_deleted,
         }
 
 
@@ -91,6 +95,10 @@ async def purge_old_data() -> PurgeReport:
                 "DELETE FROM visit WHERE first_seen < NOW() - make_interval(days => $1)",
                 (config.data_retention_days,),
                 return_rowcount=True,
+            )
+        if config.notification_retention_days > 0:
+            report.notifications_deleted = await notification_service.purge(
+                config.notification_retention_days
             )
     except Exception:
         logger.exception("Retention pass failed")

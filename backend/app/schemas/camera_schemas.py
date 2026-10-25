@@ -6,6 +6,26 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
+ALERT_KEYS = ("alert_max_people", "alert_min_people")
+
+
+def check_alert_settings(settings: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """alert_max_people / alert_min_people: whole numbers >= 0, or absent (off)."""
+    if not settings:
+        return settings
+    for key in ALERT_KEYS:
+        if key not in settings or settings[key] is None:
+            continue
+        value = settings[key]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value != int(value) or value < 0:
+            raise ValueError(f"{key} must be a whole number of people, 0 or more")
+        settings[key] = int(value)
+    high, low = settings.get("alert_max_people"), settings.get("alert_min_people")
+    if high is not None and low is not None and low > high:
+        raise ValueError("alert_min_people is above alert_max_people")
+    return settings
+
+
 class CameraCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     rtsp_url: str = Field(..., description="rtsp://user:pass@host:554/stream, or a local file path")
@@ -34,6 +54,11 @@ class CameraCreate(BaseModel):
             raise ValueError("each roi point must be [x, y]")
         return value
 
+    @field_validator("settings")
+    @classmethod
+    def validate_alerts(cls, value: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        return check_alert_settings(value)
+
 
 class CameraUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=120)
@@ -46,6 +71,11 @@ class CameraUpdate(BaseModel):
     enabled: Optional[bool] = None
     roi: Optional[List[List[float]]] = None
     settings: Optional[Dict[str, Any]] = None
+
+    @field_validator("settings")
+    @classmethod
+    def validate_alerts(cls, value: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        return check_alert_settings(value)
 
 
 class CameraResponse(BaseModel):

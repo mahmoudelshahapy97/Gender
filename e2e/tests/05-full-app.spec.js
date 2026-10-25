@@ -7,6 +7,7 @@ import {
   authHeaders,
   collectPageProblems,
   findCamera,
+  settled,
 } from "./helpers.js";
 
 /**
@@ -14,7 +15,7 @@ import {
  * System page, the live view, what a viewer may do on a camera, the whole
  * account lifecycle an admin drives from the Users page, a session surviving
  * an expired access token, every page at phone width, and every page in both
- * themes. Runs before 07, which deletes the camera.
+ * themes. Runs before 08, which deletes the camera.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -236,7 +237,7 @@ test("every page fits a phone screen, and the menu reaches them", async ({ brows
     for (const { path, heading } of PAGES) {
       await page.goto(path);
       await expect(page.getByRole("heading", { name: heading, level: 5 }).first()).toBeVisible();
-      await page.waitForLoadState("networkidle");
+      await settled(page);
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth
       );
@@ -286,7 +287,7 @@ for (const mode of ["light", "dark"]) {
     for (const { path, heading } of PAGES) {
       await page.goto(path);
       await expect(page.getByRole("heading", { name: heading, level: 5 }).first()).toBeVisible();
-      await page.waitForLoadState("networkidle");
+      await settled(page);
       await page.screenshot({
         path: `test-results/${mode}${path === "/" ? "-dashboard" : path.replace("/", "-")}.png`,
         fullPage: true,

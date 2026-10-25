@@ -5,6 +5,7 @@ import AuthLayout from "../layouts/AuthLayout";
 import { Loading } from "../components/DataStates";
 import { RequireAuth } from "./RequireAuth";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext";
+import { NotificationsProvider } from "../notifications/NotificationsContext";
 
 // Code-split per route: the dashboard is the landing screen and has no business
 // downloading the analytics charts before it can paint.
@@ -19,6 +20,7 @@ const Analytics = lazy(() => import("../pages/Analytics"));
 const Visits = lazy(() => import("../pages/Visits"));
 const Snapshots = lazy(() => import("../pages/Snapshots"));
 const SystemStatus = lazy(() => import("../pages/SystemStatus"));
+const Notifications = lazy(() => import("../pages/Notifications"));
 const Users = lazy(() => import("../pages/admin/Users"));
 const Workspaces = lazy(() => import("../pages/admin/Workspaces"));
 const NotFound = lazy(() => import("../pages/NotFound"));
@@ -37,7 +39,9 @@ export function AppRouter({ mode, onToggleMode }) {
             element={
               <RequireAuth>
                 <WorkspaceProvider>
-                  <AppLayout mode={mode} onToggleMode={onToggleMode} />
+                  <NotificationsProvider>
+                    <AppLayout mode={mode} onToggleMode={onToggleMode} />
+                  </NotificationsProvider>
                 </WorkspaceProvider>
               </RequireAuth>
             }
@@ -69,6 +73,7 @@ export function AppRouter({ mode, onToggleMode }) {
             <Route path="/visits" element={<Visits />} />
             <Route path="/snapshots" element={<Snapshots />} />
             <Route path="/system" element={<SystemStatus />} />
+            <Route path="/notifications" element={<Notifications />} />
 
             <Route
               path="/workspaces"

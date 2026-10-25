@@ -202,6 +202,38 @@ class Settings(BaseSettings):
     worker_restart_backoff_max_s: float = 300.0
 
     # =========================================================================
+    # NOTIFICATIONS
+    # =========================================================================
+    # Occupancy alerts (a camera's alert_max_people / alert_min_people
+    # settings) and camera health (offline / back online). See
+    # app/services/notification_service.py.
+    notifications_enabled: bool = True
+    # The people count must stay past a threshold this long before it alerts,
+    # so one frame of detector flicker does not page anybody.
+    alert_sustain_s: float = 10.0
+    # At most one alert per camera and direction this often. A count that
+    # stays past its threshold alerts once, not once per cooldown.
+    alert_cooldown_s: float = 600.0
+    # An enabled camera that has delivered no frame for this long is offline.
+    # Checked on the supervisor's tick, so it needs worker supervision.
+    camera_offline_after_s: float = 90.0
+    # A camera that went offline less than this long ago does not notify
+    # again (nor its recovery), so a flapping link is one pair, not dozens.
+    camera_health_cooldown_s: float = 900.0
+    # Mail notifications to the accounts that opted in. Needs SMTP_HOST.
+    notification_email_enabled: bool = True
+    # The console's address, linked from the mails when set,
+    # e.g. https://gender.example.com
+    console_url: str = ""
+    # Concurrent live notification streams (one per open console tab).
+    max_notification_streams: int = 200
+    notification_retention_days: int = 90
+
+    @property
+    def notification_email_available(self) -> bool:
+        return self.notification_email_enabled and bool(self.smtp_host)
+
+    # =========================================================================
     # OBJECT STORAGE (MinIO)
     # =========================================================================
     # Snapshot frames go to MinIO; Postgres keeps the records and object keys.

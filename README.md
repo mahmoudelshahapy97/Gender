@@ -98,6 +98,26 @@ The camera page shows the annotated output live, as MJPEG from `GET /api/v1/came
 Each person is boxed in the colour of their label, and a table lists the people in view with
 the votes `gender.pt` has cast for them.
 
+## Notifications
+
+The console's bell and its Notifications page show two kinds of event, live (Server-Sent
+Events from `GET /api/v1/notifications/stream`, with a toast as each arrives):
+
+- **Occupancy alerts.** On a camera's edit page, *Alert above* and *Alert below* set its
+  thresholds (`settings.alert_max_people` / `alert_min_people`; blank is off). The people count
+  must stay past one for `ALERT_SUSTAIN_S` (10 s). It then alerts once per crossing, at most
+  every `ALERT_COOLDOWN_S` (600 s), so a crowd that stays all afternoon is one alert.
+- **Camera health.** An enabled camera that delivers no frames for `CAMERA_OFFLINE_AFTER_S`
+  (90 s) is reported offline, and back online when frames resume. Inside
+  `CAMERA_HEALTH_COOLDOWN_S` (900 s) a flapping camera stays quiet. Cameras stopped on purpose
+  are never reported. This rides on the worker supervisor, so it needs
+  `WORKER_SUPERVISION_ENABLED`.
+
+A notification belongs to its camera's workspace and reaches everyone who can see it: the
+members, and every admin. Read state is per account. With `SMTP_HOST` set, *Email me alerts* in
+the account menu also mails them (set `CONSOLE_URL` to link back to the console). Retention
+deletes notifications older than `NOTIFICATION_RETENTION_DAYS` (90).
+
 ## Workspaces
 
 Data is partitioned into workspaces, as in InsightEye. A camera belongs to one, and its visits and

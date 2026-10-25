@@ -100,9 +100,9 @@ create every other account through `POST /users`.
 | POST | `/auth/login` | `{username, password}` → access + refresh token, sets the image cookie. `username` may be the email (any case) |
 | POST | `/auth/refresh` | `{refresh_token}` → a new pair; rotates the refresh token |
 | POST | `/auth/logout` · `/auth/logout-all` | revoke this session, or every session for the account |
-| GET | `/auth/me` | the calling user |
+| GET · PATCH | `/auth/me` | the calling user · change their own `full_name` and `notify_email` (409 for `notify_email: true` without SMTP) |
 | POST | `/auth/change-password` | verifies the current password, then logs out everywhere |
-| GET | `/auth/options` | public: `{password_reset}`, whether "Forgot your password?" is offered |
+| GET | `/auth/options` | public: `{password_reset, notification_email}`, what the console may offer |
 | POST | `/auth/forgot-password` · `/auth/reset-password` | public: mail a 6-digit code; set a new password with it |
 
 Password reset stays off until `SMTP_HOST` is set, and until then the two public routes answer
@@ -123,8 +123,9 @@ or a camera, visit or snapshot in one, answers **404**, the same as a missing on
 
 **Image routes.** `/cameras/{id}/snapshot`, `/cameras/{id}/stream` and `/snapshots/{id}/frame`
 also accept the httpOnly cookie that `/auth/login` sets, because an `<img src>` cannot send a
-header. They check the workspace of the image itself. No other route accepts the cookie; see
-`get_image_viewer` in `app/api/deps.py`.
+header. They check the workspace of the image itself. The notification stream accepts it too,
+for the same reason (an `EventSource`), and ends when the token expires. No other route accepts
+the cookie; see `get_image_viewer` and `get_event_viewer` in `app/api/deps.py`.
 
 ---
 
@@ -169,6 +170,28 @@ The base prefix is `/api/v1`. The analytics, visit and snapshot routes share the
 | POST | `/cameras/{id}/start` · `/stop` | control the worker |
 | GET | `/cameras/{id}/status` | worker state, live occupancy and every person tracked, with their votes |
 | GET | `/cameras/{id}/snapshot` · `/stream` | latest annotated frame; live MJPEG (at most `MAX_MJPEG_CLIENTS` viewers) |
+
+### Notifications
+Occupancy alerts and camera offline / back online
+([app/services/notification_service.py](app/services/notification_service.py), with the rules
+in [app/services/alerts.py](app/services/alerts.py)). Unlike the data routes these cover every
+workspace the caller can see; `workspace_id` narrows to one.
+
+| method | path | purpose |
+|---|---|---|
+| GET | `/notifications` | `?unread_only=&kind=&workspace_id=&limit=&offset=`, newest first → `{total, unread, items}`, each with the caller's `is_read` |
+| GET | `/notifications/unread-count` | `{unread}` |
+| GET | `/notifications/{id}` | one notification |
+| POST · DELETE | `/notifications/{id}/read` | mark read · unread |
+| POST | `/notifications/read` · `/read-all` | `{notification_ids}` · `{workspace_id?}` |
+| GET | `/notifications/stream` | Server-Sent Events: `ready` `{unread}`, then `notification` per event, `resync` if the stream fell behind; ends at token expiry |
+
+`kind` is `occupancy_high`, `occupancy_low`, `camera_offline` or `camera_online`. Alerts come
+from a camera's `settings.alert_max_people` / `alert_min_people`. They are published from the
+worker that sees the count, and health from the supervisor's tick. Both outlive a worker
+restart, so a restart neither resets an alert's cooldown nor repeats an outage. Mail goes to
+active accounts with `notify_email` that can see the workspace, one SMTP session per
+notification.
 
 ### Accounts, workspaces, system
 `/users` (admin CRUD, `workspace_ids` on create and update), `/workspaces` and
@@ -230,6 +253,8 @@ build takes several GB of disk, so check free space first.
 | `test_integration.py` | camera CRUD, visit and snapshot writes, every analytics endpoint, the filters, MinIO with the Postgres fallback, retention |
 | `test_migrations.py` | the runner: name order, each file applied once, rollback on failure, a warning for an edited file |
 | `test_supervisor.py` | restart of dead, errored and stalled workers, with backoff |
+| `test_alerts.py` | when an alert fires: sustain, once per crossing, cooldown, flicker; offline / online and flapping; the supervisor's health tick |
+| `test_notifications.py` | who sees which notification, per-account read state, the routes, the profile opt-in, mail to opted-in accounts, the live stream |
 | `test_models.py` | **slow**: loads the real weights and counts people by gender on `videos/gender.mp4` |
 
 The slow tests are skipped by default. To run everything, append

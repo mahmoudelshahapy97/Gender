@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
@@ -16,10 +16,12 @@ import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import LogoutIcon from "@mui/icons-material/Logout";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 
 import { auth as authApi } from "../api/endpoints";
 import { errorMessage } from "../api/client";
@@ -98,6 +100,65 @@ function ChangePasswordDialog({ open, onClose }) {
   );
 }
 
+/**
+ * "Email me alerts": the account's own opt-in for having its workspaces'
+ * notifications mailed. Off, and explained, while the server has no SMTP.
+ */
+function EmailAlertsItem() {
+  const { user, refreshProfile } = useAuth();
+  const toast = useToast();
+  const [available, setAvailable] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    authApi
+      .options()
+      .then((options) => !cancelled && setAvailable(Boolean(options.notification_email)))
+      .catch(() => !cancelled && setAvailable(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const next = !user.notify_email;
+      await authApi.updateMe({ notify_email: next });
+      await refreshProfile();
+      toast.success(next ? `Alerts will be mailed to ${user.email}.` : "Email alerts are off.");
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Turning it off is always allowed, even after SMTP went away.
+  const disabled = busy || available === null || (!available && !user.notify_email);
+  return (
+    <MenuItem onClick={disabled ? undefined : toggle} disabled={disabled}>
+      <ListItemIcon>
+        <MailOutlineIcon fontSize="small" />
+      </ListItemIcon>
+      <ListItemText
+        primary="Email me alerts"
+        secondary={available === false ? "Email is not set up on this server" : null}
+        secondaryTypographyProps={{ variant: "caption" }}
+      />
+      <Switch
+        edge="end"
+        size="small"
+        checked={Boolean(user.notify_email)}
+        tabIndex={-1}
+        inputProps={{ "aria-label": "Email me alerts" }}
+        sx={{ ml: 1 }}
+      />
+    </MenuItem>
+  );
+}
+
 export function UserMenu() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -130,6 +191,7 @@ export function UserMenu() {
           <Chip size="small" label={user.role} color={ROLE_COLOR[user.role] || "default"} />
         </Box>
         <Divider />
+        <EmailAlertsItem />
         <MenuItem
           onClick={() => {
             setAnchorEl(null);

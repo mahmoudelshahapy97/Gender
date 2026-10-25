@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from app.api.deps import get_workspace_id, require_role
 from app.core.config import config
 from app.services.model_registry import model_registry
+from app.services.notification_service import hub
 from app.services.object_store import object_store
 from app.services.stream_manager import stream_manager
 from app.services.workspace_service import workspace_service
@@ -77,6 +78,16 @@ async def effective_config() -> Dict[str, Any]:
                 "enabled": config.retention_enabled,
                 "frame_retention_days": config.frame_retention_days,
                 "data_retention_days": config.data_retention_days,
+                "notification_retention_days": config.notification_retention_days,
+            },
+            "notifications": {
+                "enabled": config.notifications_enabled,
+                "alert_sustain_s": config.alert_sustain_s,
+                "alert_cooldown_s": config.alert_cooldown_s,
+                "camera_offline_after_s": config.camera_offline_after_s,
+                "camera_health_cooldown_s": config.camera_health_cooldown_s,
+                "email": config.notification_email_available,
+                "live_streams": hub.count,
             },
         },
     )

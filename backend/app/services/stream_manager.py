@@ -13,7 +13,10 @@ worker at all.
 Per processed frame a worker tracks the people (people.pt + ByteTrack), runs
 gender.pt every GENDER_EVERY_N frames, and lets gender_service turn both into
 visits (written when a person's track ends) and occupancy (written, with the
-annotated frame, every SNAPSHOT_INTERVAL_S).
+annotated frame, every SNAPSHOT_INTERVAL_S). With alert thresholds set, the
+people count also feeds OccupancyAlerts; the supervisor's tick feeds
+HealthWatch (camera offline / back online). Both publish through
+notification_service.
 """
 
 import asyncio
@@ -27,8 +30,10 @@ from uuid import UUID
 import numpy as np
 
 from app.core.config import config
+from app.services.alerts import OFFLINE, ONLINE, HealthWatch, OccupancyAlerts
 from app.services.camera_service import camera_service
 from app.services.gender_service import CountingParams, GenderCounter, Visit
+from app.services.notification_service import notification_service
 from app.services.rtsp_reader import RTSPReader
 from app.services.snapshot_service import snapshot_service
 from app.services.tracking_service import Detection, GenderDetector, PersonTracker
@@ -59,7 +64,7 @@ def _setting(settings: Dict[str, Any], name: str, default: float) -> float:
 class CameraWorker:
     """Processes a single RTSP stream until stopped."""
 
-    def __init__(self, camera: Dict[str, Any]) -> None:
+    def __init__(self, camera: Dict[str, Any], alerts: Optional[OccupancyAlerts] = None) -> None:
         self.camera = camera
         self.camera_id: UUID = camera["camera_id"]
         self.name: str = camera.get("name") or str(self.camera_id)
@@ -70,6 +75,7 @@ class CameraWorker:
         self.gender_every_n = max(1, int(_setting(settings, "gender_every_n", config.gender_every_n)))
         self.snapshot_interval = max(5.0, _setting(settings, "snapshot_interval_s", config.snapshot_interval_s))
         self.roi = camera_service.parse_roi(camera)
+        self.alerts = alerts or OccupancyAlerts(settings, config.alert_sustain_s, config.alert_cooldown_s)
 
         self.reader = RTSPReader(self.rtsp_url)
         self.tracker: Optional[PersonTracker] = None
@@ -298,6 +304,10 @@ class CameraWorker:
         self._last_annotated = annotated
 
         await self._record_visits(visits)
+        if self.alerts.enabled:
+            occupancy = self.counter.occupancy()
+            for alert in self.alerts.observe(occupancy["person_count"], now):
+                await notification_service.occupancy_alert(self.camera, alert, occupancy)
         if now >= self._next_snapshot_at:
             self._next_snapshot_at = now + self.snapshot_interval
             await self._record_snapshot(annotated)
@@ -353,6 +363,10 @@ class StreamManager:
         # camera_id -> restart count, and monotonic time of the next allowed retry
         self._restarts: Dict[UUID, int] = {}
         self._retry_after: Dict[UUID, float] = {}
+        # Outlive the workers, so a restart does not reset an alert's cooldown
+        # or forget that a camera was reported offline.
+        self._alerts: Dict[UUID, OccupancyAlerts] = {}
+        self.health = HealthWatch(config.camera_offline_after_s, config.camera_health_cooldown_s)
 
     # -------------------------------------------------------------- lifecycle
     async def startup(self) -> None:
@@ -370,7 +384,7 @@ class StreamManager:
             if existing:
                 await existing.stop()
 
-            worker = CameraWorker(camera)
+            worker = self._new_worker(camera)
             self.workers[camera_id] = worker
             await worker.start()
             return worker.status()
@@ -380,6 +394,9 @@ class StreamManager:
             worker = self.workers.pop(camera_id, None)
         self._restarts.pop(camera_id, None)
         self._retry_after.pop(camera_id, None)
+        # Stopped on purpose: neither "offline" nor its recovery is news.
+        self.health.forget(camera_id)
+        self._alerts.pop(camera_id, None)
         if worker is None:
             return False
         await worker.stop()
@@ -405,10 +422,22 @@ class StreamManager:
             camera = await camera_service.get_camera(camera_id)
             if not camera or not camera["enabled"]:
                 return None
-            fresh = CameraWorker(camera)
+            fresh = self._new_worker(camera)
             self.workers[camera_id] = fresh
             await fresh.start()
             return fresh.status()
+
+    def _new_worker(self, camera: Dict[str, Any]) -> CameraWorker:
+        """A worker for the row, carrying over the alert state when the
+        thresholds did not change (a supervisor restart, or an edit of
+        something else)."""
+        settings = camera_service.parse_settings(camera)
+        alerts = OccupancyAlerts(settings, config.alert_sustain_s, config.alert_cooldown_s)
+        previous = self._alerts.get(camera["camera_id"])
+        if previous is not None and previous.thresholds == alerts.thresholds:
+            alerts = previous
+        self._alerts[camera["camera_id"]] = alerts
+        return CameraWorker(camera, alerts)
 
     async def start_enabled_cameras(self) -> int:
         """Called at startup so enabled cameras resume without manual intervention."""
@@ -455,6 +484,7 @@ class StreamManager:
                 await asyncio.sleep(interval)
                 await self.check_workers()
                 await self.reconcile()
+                await self.watch_health()
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -536,6 +566,54 @@ class StreamManager:
             except Exception as e:
                 self._next_backoff(camera_id, now)
                 logger.warning("Camera %s: start failed: %s", camera.get("name"), e)
+
+    @staticmethod
+    def delivering(worker: Optional[CameraWorker]) -> bool:
+        """Frames are arriving and being analysed right now."""
+        return (
+            worker is not None
+            and worker.running
+            and worker.state == RUNNING
+            and worker.connected
+            and worker.seconds_since_progress < config.rtsp_open_timeout
+        )
+
+    async def watch_health(self) -> None:
+        """Camera offline / back online notifications, for every enabled camera."""
+        if not config.notifications_enabled:
+            return
+        try:
+            cameras = await camera_service.list_cameras(enabled_only=True)
+        except Exception as e:
+            logger.warning("Health watch could not list cameras: %s", e)
+            return
+
+        now = time.monotonic()
+        enabled = set()
+        for camera in cameras:
+            camera_id = camera["camera_id"]
+            enabled.add(camera_id)
+            worker = self.workers.get(camera_id)
+            if not self.health.known(camera_id):
+                # First look since the API started: was it left reported offline?
+                try:
+                    last = await notification_service.last_health_kind(camera_id)
+                except Exception:
+                    last = None
+                self.health.restore(camera_id, last == OFFLINE, now)
+            down_for = self.health.down_for(camera_id, now)
+            event = self.health.observe(camera_id, self.delivering(worker), now)
+            if event == OFFLINE:
+                await notification_service.camera_health(
+                    camera, OFFLINE, self.health.down_for(camera_id, now),
+                    worker.last_error if worker else "no worker",
+                )
+            elif event == ONLINE:
+                await notification_service.camera_health(camera, ONLINE, down_for)
+
+        # Disabled or deleted since the last tick.
+        for camera_id in [c for c in self.health.cameras() if c not in enabled]:
+            self.health.forget(camera_id)
 
     # ------------------------------------------------------------------ query
     def get_worker(self, camera_id: UUID) -> Optional[CameraWorker]:

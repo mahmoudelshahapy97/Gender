@@ -4,6 +4,7 @@ from app.api.routes import (
     analytics_router,
     auth_router,
     camera_router,
+    notification_router,
     snapshot_router,
     system_router,
     user_router,
@@ -23,3 +24,4 @@ router.include_router(visit_router.router)
 router.include_router(snapshot_router.router)
 router.include_router(system_router.router)
 router.include_router(analytics_router.router)
+router.include_router(notification_router.router)

@@ -14,6 +14,7 @@ from app.schemas.auth_schemas import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
+    ProfileUpdate,
     RefreshRequest,
     ResetPasswordRequest,
     TokenResponse,
@@ -136,6 +137,25 @@ async def me(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[s
     return current_user
 
 
+@router.patch("/me", response_model=AuthUser)
+async def update_me(
+    payload: ProfileUpdate, current_user: Dict[str, Any] = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """The account's own name and email-alert opt-in. Role and status are an
+    admin's business (PATCH /users/{id})."""
+    if payload.notify_email and not config.notification_email_available:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email alerts are not set up on this server (SMTP_HOST is empty).",
+        )
+    updated = await user_service.update_user(
+        current_user["user_id"],
+        full_name=payload.full_name.strip() if payload.full_name is not None else None,
+        notify_email=payload.notify_email,
+    )
+    return updated
+
+
 @router.post("/change-password")
 async def change_password(
     payload: ChangePasswordRequest, current_user: Dict[str, Any] = Depends(get_current_user)
@@ -184,7 +204,10 @@ def _require_password_reset() -> None:
 @router.get("/options")
 async def auth_options() -> Dict[str, Any]:
     """What the login page may offer. Public: it reveals no account data."""
-    return {"password_reset": config.password_reset_enabled}
+    return {
+        "password_reset": config.password_reset_enabled,
+        "notification_email": config.notification_email_available,
+    }
 
 
 @router.post("/forgot-password")

@@ -22,6 +22,14 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
 
 
+class ProfileUpdate(BaseModel):
+    """What an account may change about itself."""
+
+    full_name: Optional[str] = Field(None, max_length=120)
+    # Mail me my workspaces' notifications.
+    notify_email: Optional[bool] = None
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 
@@ -41,6 +49,7 @@ class AuthUser(BaseModel):
     full_name: Optional[str] = None
     role: str
     is_active: bool
+    notify_email: bool = False
     last_login: Optional[datetime] = None
     created_at: datetime
 

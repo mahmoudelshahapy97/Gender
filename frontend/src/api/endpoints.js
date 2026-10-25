@@ -24,6 +24,8 @@ export const auth = {
     client.post("/auth/logout", { refresh_token: refreshToken }).then((r) => r.data),
   logoutAll: () => client.post("/auth/logout-all").then((r) => r.data),
   me: (opts) => client.get("/auth/me", opts).then((r) => r.data),
+  /** The account's own {full_name, notify_email}. */
+  updateMe: (payload) => client.patch("/auth/me", payload).then((r) => r.data),
   changePassword: (currentPassword, newPassword) =>
     client
       .post("/auth/change-password", {
@@ -31,7 +33,7 @@ export const auth = {
         new_password: newPassword,
       })
       .then((r) => r.data),
-  /** Public: what the login page may offer, e.g. {password_reset: true}. */
+  /** Public: what the console may offer, e.g. {password_reset, notification_email}. */
   options: (opts) => client.get("/auth/options", opts).then((r) => r.data),
   /** Mails a reset code; the answer is the same whether or not the account exists. */
   forgotPassword: (email) =>
@@ -95,6 +97,26 @@ export const cameras = {
   streamUrl: (id, bust = Date.now()) => mediaUrl(`/cameras/${id}/stream`, { t: bust }),
 };
 
+// --- notifications ----------------------------------------------------------
+// Across every workspace the caller can see; {workspace_id} narrows to one.
+export const notifications = {
+  /** {unread_only, kind (comma-joined), workspace_id, limit, offset} -> {total, unread, items} */
+  list: (params, opts) => client.get("/notifications", { params, ...opts }).then((r) => r.data.data),
+  unreadCount: (opts) =>
+    client.get("/notifications/unread-count", opts).then((r) => r.data.data.unread),
+  markRead: (id) => client.post(`/notifications/${id}/read`).then((r) => r.data.data),
+  markUnread: (id) => client.delete(`/notifications/${id}/read`).then((r) => r.data.data),
+  markAllRead: (workspaceId) =>
+    client
+      .post("/notifications/read-all", workspaceId ? { workspace_id: workspaceId } : {})
+      .then((r) => r.data.data),
+  /**
+   * Server-Sent Events, for an EventSource: cookie-authenticated like the
+   * <img> routes, since an EventSource cannot send a header either.
+   */
+  streamUrl: () => mediaUrl("/notifications/stream"),
+};
+
 // --- analytics ------------------------------------------------------------
 // Every call takes the filter bar's params: start_date, end_date, camera_ids,
 // locations, areas, buildings, floor_levels, zones (comma-joined) and tz.
@@ -153,4 +175,5 @@ export default {
   analytics,
   visits,
   snapshots,
+  notifications,
 };

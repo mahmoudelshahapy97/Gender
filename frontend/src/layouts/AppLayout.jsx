@@ -30,10 +30,12 @@ import MenuIcon from "@mui/icons-material/Menu";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 
 import { health } from "../api/endpoints";
 import { usePolling } from "../hooks/usePolling";
 import { useAuth } from "../auth/AuthContext";
+import NotificationBell from "../components/NotificationBell";
 import UserMenu from "../components/UserMenu";
 import WorkspaceSwitcher from "../components/WorkspaceSwitcher";
 import { EmptyState, ErrorState, Loading } from "../components/DataStates";
@@ -56,6 +58,12 @@ const NAV_SECTIONS = [
     items: [
       { to: "/", label: "Dashboard", icon: <DashboardIcon />, end: true, minimum: "viewer" },
       { to: "/cameras", label: "Cameras", icon: <VideocamIcon />, minimum: "viewer" },
+      {
+        to: "/notifications",
+        label: "Notifications",
+        icon: <NotificationsIcon />,
+        minimum: "viewer",
+      },
     ],
   },
   {
@@ -252,9 +260,10 @@ export function AppLayout({ mode, onToggleMode }) {
               {currentTitle}
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack direction="row" spacing={{ xs: 0.5, sm: 1.5 }} alignItems="center">
             <WorkspaceSwitcher />
             <BackendStatus />
+            <NotificationBell />
             <Tooltip title={mode === "dark" ? "Switch to light" : "Switch to dark"}>
               <IconButton onClick={onToggleMode} aria-label="Toggle colour mode">
                 {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}

@@ -98,6 +98,7 @@ class UserService:
         full_name: Optional[str] = None,
         role: Optional[str] = None,
         is_active: Optional[bool] = None,
+        notify_email: Optional[bool] = None,
     ) -> Optional[Dict[str, Any]]:
         """Partial update -- only the fields callers pass are touched. A role
         or is_active change bumps token_version so existing sessions for this
@@ -115,6 +116,8 @@ class UserService:
             add("role", role)
         if is_active is not None:
             add("is_active", is_active)
+        if notify_email is not None:
+            add("notify_email", notify_email)
         if role is not None or is_active is not None:
             fields.append("token_version = token_version + 1")
 

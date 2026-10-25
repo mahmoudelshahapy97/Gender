@@ -5,12 +5,13 @@
  * so they form one story: 01 checks the shell, 02 registers a camera and
  * watches it count, 03 reads the analytics the seed provides, 04 the visits and
  * snapshots, 05 the rest of the console (accounts, phone width, both themes),
- * 06 the workspace walls, 07 tears down what 02 created. State that has to survive between files is
+ * 06 the workspace walls, 07 the notifications, 08 tears down what 02 created. State that has to survive between files is
  * re-read from the API rather than kept in a module variable, because each spec
  * file gets a fresh module registry.
  */
 
 import fs from "fs";
+import { expect } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -176,4 +177,14 @@ export async function latestMailTo(request, address, { timeout = 30_000 } = {}) 
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   throw new Error(`No mail to ${address} within ${timeout}ms`);
+}
+
+/**
+ * The page has drawn its data: no loading spinner left. Not "networkidle" --
+ * the console keeps its live notification stream open for as long as it is
+ * shown (and a camera page its MJPEG view), so the network is never idle.
+ * Only the spinner counts: the dashboard's share bars are progressbars too.
+ */
+export async function settled(page, { timeout = 30_000 } = {}) {
+  await expect(page.locator(".MuiCircularProgress-root")).toHaveCount(0, { timeout });
 }

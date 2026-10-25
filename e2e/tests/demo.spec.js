@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { ADMIN_CREDENTIALS, SEED } from "./helpers.js";
+import { ADMIN_CREDENTIALS, SEED, settled as dataDrawn } from "./helpers.js";
 
 /**
  * A recorded tour of the console for people to watch, not a correctness
@@ -79,7 +79,7 @@ async function login(page) {
 
 /** Wait for the charts to draw rather than for a fixed time. */
 async function settled(page) {
-  await page.waitForLoadState("networkidle").catch(() => {});
+  await dataDrawn(page).catch(() => {});
   await pause(page);
 }
 

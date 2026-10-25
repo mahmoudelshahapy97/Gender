@@ -48,3 +48,20 @@ export const POLL_INTERVAL_MS = Number(import.meta.env.VITE_POLL_INTERVAL_MS) ||
 /** Default page size for the Visits table. */
 export const PAGE_SIZE = 20;
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
+/**
+ * notification.kind (database/schema.sql), and how each one reads. The
+ * severities are the API's: critical (a camera offline), warning (an occupancy
+ * alert), info (a camera back online).
+ */
+export const NOTIFICATION_KINDS = ["occupancy_high", "occupancy_low", "camera_offline", "camera_online"];
+
+export const NOTIFICATION_KIND_LABEL = {
+  occupancy_high: "Crowding",
+  occupancy_low: "Low occupancy",
+  camera_offline: "Camera offline",
+  camera_online: "Back online",
+};
+
+/** MUI palette key per severity, for icons, chips and toasts. */
+export const SEVERITY_COLOR = { critical: "error", warning: "warning", info: "success" };

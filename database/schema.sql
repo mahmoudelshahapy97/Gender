@@ -190,6 +190,10 @@ CREATE TABLE IF NOT EXISTS app_user (
     -- 401.
     token_version INTEGER NOT NULL DEFAULT 1,
 
+    -- Opt-in: notifications for this account's workspaces are also mailed
+    -- to it (when SMTP is set up).
+    notify_email  BOOLEAN NOT NULL DEFAULT FALSE,
+
     last_login    TIMESTAMPTZ,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -246,6 +250,44 @@ CREATE TABLE IF NOT EXISTS workspace_member (
 );
 
 CREATE INDEX IF NOT EXISTS idx_workspace_member_user ON workspace_member (user_id);
+
+-- ---------------------------------------------------------------------------
+-- notification — something an operator should know about, in one workspace
+--
+-- occupancy_high / occupancy_low: a camera's people count stayed past one of
+-- its alert thresholds (camera.settings alert_max_people / alert_min_people).
+-- camera_offline / camera_online: an enabled camera stopped delivering
+-- frames, and came back. One row per event, shared by everyone who can see
+-- the workspace; notification_read says who has read it. camera_name is
+-- kept so the row still reads after the camera is deleted.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notification (
+    notification_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id     UUID NOT NULL REFERENCES workspace (workspace_id) ON DELETE CASCADE,
+    camera_id        UUID REFERENCES camera (camera_id) ON DELETE SET NULL,
+    camera_name      TEXT,
+    kind             TEXT NOT NULL
+                     CHECK (kind IN ('occupancy_high', 'occupancy_low', 'camera_offline', 'camera_online')),
+    severity         TEXT NOT NULL DEFAULT 'info'
+                     CHECK (severity IN ('info', 'warning', 'critical')),
+    title            TEXT NOT NULL,
+    message          TEXT NOT NULL,
+    -- The numbers behind the message, e.g. {"person_count": 12, "threshold": 10}.
+    details          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_workspace_time
+    ON notification (workspace_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_camera_time
+    ON notification (camera_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS notification_read (
+    notification_id  UUID NOT NULL REFERENCES notification (notification_id) ON DELETE CASCADE,
+    user_id          UUID NOT NULL REFERENCES app_user (user_id) ON DELETE CASCADE,
+    read_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, notification_id)
+);
 
 DO $$
 BEGIN

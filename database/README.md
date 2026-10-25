@@ -56,6 +56,7 @@ docker compose exec api python -m app.core.migrations          # apply now, with
 | File | Change |
 | --- | --- |
 | `001_baseline.sql` | the schema at the first release, a copy of `schema.sql` then; a no-op on a fresh volume |
+| `002_notifications.sql` | `notification` (one row per event, per workspace), `notification_read` (who read it), `app_user.notify_email` |
 
 ## Workspaces
 

@@ -105,6 +105,23 @@ async def get_image_viewer(
     return await _load_active_user(payload)
 
 
+async def get_event_viewer(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Dict[str, Any]:
+    """get_image_viewer for the notification stream: a browser EventSource
+    cannot send headers either, and the stream is just as read-only. Adds
+    ``token_expires_at`` (epoch seconds), so the stream can end when the
+    token does and the browser reconnects with the refreshed cookie --
+    otherwise a session revoked mid-stream would keep receiving."""
+    token = credentials.credentials if credentials else request.cookies.get(config.auth_cookie_name)
+    if not token:
+        raise _UNAUTHORIZED
+    payload = decode_token(token, "access")
+    user = await _load_active_user(payload)
+    return {**user, "token_expires_at": float(payload["exp"])}
+
+
 # ---------------------------------------------------------------- workspaces
 _WORKSPACE_NOT_FOUND = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found."

@@ -27,7 +27,8 @@ backend, so **the browser only ever makes same-origin requests**. Two things fol
   which port a dev server happened to bind.
 - **`<img>` works against the binary endpoints.** Camera snapshots, the live MJPEG stream and
   snapshot frames go straight into an `<img>`, which can carry neither headers nor a preflight
-  response. They authenticate with the httpOnly cookie set at login.
+  response. They authenticate with the httpOnly cookie set at login, and so does the live
+  notification stream (an `EventSource`, see `src/notifications/NotificationsContext.jsx`).
 
 In the container, `Dockerfile` builds the bundle and serves it from nginx, and
 `nginx.conf.template` does what the dev proxy does. **Keep the two in step**: a path proxied in
@@ -35,8 +36,8 @@ dev but not in nginx is a 404 that only shows up after a build. The template als
 
 - has `try_files $uri $uri/ /index.html`, because this is a `BrowserRouter` and a hard refresh on
   `/cameras/<uuid>` asks the server for a path that is not on disk;
-- turns proxy buffering off for `/api/v1/cameras/*/stream`, without which nginx would hold the
-  MJPEG stream back.
+- turns proxy buffering off for `/api/v1/cameras/*/stream` and `/api/v1/notifications/stream`,
+  without which nginx would hold the MJPEG frames and the notification events back.
 
 `GD_API_URL` (default `http://api:8000`, set on the `web` service in `../docker-compose.yml`) is
 what nginx proxies to.
@@ -50,9 +51,10 @@ what nginx proxies to.
 | `/visits` | One row per person: gender, votes, dwell. Filter by gender, page, export CSV |
 | `/snapshots` | Occupancy snapshots as a grid; click one for its annotated frame |
 | `/cameras` | Registered cameras, with worker controls |
-| `/cameras/new` · `/cameras/:id/edit` | Create / edit a camera: RTSP URL, the five location levels, counting overrides (admin) |
+| `/cameras/new` · `/cameras/:id/edit` | Create / edit a camera: RTSP URL, the five location levels, counting overrides, alert thresholds (admin) |
 | `/cameras/:id` | One camera: live MJPEG, configuration, worker state, the people in view and their votes |
 | `/system` | Workers and the configuration in force |
+| `/notifications` | Occupancy alerts and camera outages across the account's workspaces: filter by kind, workspace and unread; mark read. The bar's bell shows the unread count and the latest, live |
 | `/workspaces` · `/users` | Admin: workspaces and their members; accounts and roles |
 | `/login` · `/forgot-password` | Sign in; reset a password with an emailed code (when SMTP is set up) |
 
