@@ -8,9 +8,14 @@ name: gender
 # Host ports default to ones no other stack on this machine uses (lost-found
 # holds 5436/8003/8082/8556/9000/9001): Postgres 5437, API 8004, console 8083,
 # RTSP 8557, MinIO 9002/9003. Override them in the root .env.
+#
+# Containers are named gender-<service> (docker logs -f gender-api). Fixed names
+# mean one copy of this stack per Docker host: a second copy under another -p
+# needs an override with `container_name: !reset null` on each service.
 
 services:
   postgres:
+    container_name: gender-postgres
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
@@ -35,6 +40,7 @@ services:
       retries: 20
 
   api:
+    container_name: gender-api
     build:
       context: ./backend
     restart: unless-stopped
@@ -84,6 +90,7 @@ services:
               capabilities: [gpu]
 
   web:
+    container_name: gender-web
     build:
       context: ./frontend
     restart: unless-stopped
@@ -101,6 +108,7 @@ services:
   # Register the camera as rtsp://mediamtx:8554/gender -- that URL is resolved
   # by the api container. From the host it is rtsp://localhost:8557/gender.
   mediamtx:
+    container_name: gender-mediamtx
     image: bluenviron/mediamtx:latest-ffmpeg
     restart: unless-stopped
     environment:
@@ -120,6 +128,7 @@ services:
   # Chainguard's build of MinIO, pinned by digest (MinIO no longer publishes
   # community images); the same image lost-found uses.
   minio:
+    container_name: gender-minio
     image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
@@ -139,6 +148,7 @@ services:
 
   # One-shot: creates the bucket, then exits. Re-running it is harmless.
   minio-init:
+    container_name: gender-minio-init
     image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
     depends_on:
       minio:
