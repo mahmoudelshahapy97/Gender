@@ -33,7 +33,8 @@ from app.services.workspace_service import is_admin
 
 logger = logging.getLogger(__name__)
 
-KINDS = (HIGH, LOW, OFFLINE, ONLINE)
+SYSTEM = "system"
+KINDS = (HIGH, LOW, OFFLINE, ONLINE, SYSTEM)
 SEVERITIES = ("info", "warning", "critical")
 
 # Columns every listing returns, with the reader's own read state.
@@ -80,6 +81,8 @@ def serialize(row: Dict[str, Any]) -> Dict[str, Any]:
         "details": details,
         "created_at": created.isoformat() if created else None,
         "is_read": bool(row.get("is_read")),
+        # Where the console opens it: the camera, or the list for a test.
+        "link": f"/cameras/{row['camera_id']}" if row.get("camera_id") else "/notifications",
         "read_at": read_at.isoformat() if read_at else None,
     }
 
@@ -214,7 +217,8 @@ class NotificationService:
         item = serialize(row)
         logger.info("Notification [%s] %s", kind, title)
         hub.broadcast(item)
-        if config.notification_email_available:
+        # Test notifications check the console, not the mail server.
+        if config.notification_email_available and kind != SYSTEM:
             task = asyncio.create_task(self._mail(item), name="notification-mail")
             self._background.add(task)
             task.add_done_callback(self._background.discard)

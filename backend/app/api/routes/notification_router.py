@@ -111,6 +111,23 @@ async def mark_all_read(
     )
 
 
+@router.post("/test", status_code=status.HTTP_201_CREATED)
+async def send_test(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    """A "system" notification in the caller's first workspace, to check the
+    bell and the live stream end to end. Everyone in that workspace sees it."""
+    workspace_id = await workspace_service.default_for(user)
+    if workspace_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your account is not in any workspace yet.")
+    item = await notification_service.publish(
+        workspace_id=workspace_id,
+        kind="system",
+        severity="info",
+        title="Test notification",
+        message=f"Sent by {user['username']}: notifications reach this console.",
+    )
+    return create_response(True, "Test notification sent.", {"sent": 1 if item else 0})
+
+
 def _sse(event: str, data: Any) -> str:
     return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 

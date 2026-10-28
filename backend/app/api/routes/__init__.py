@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    audit_router,
     analytics_router,
     auth_router,
     camera_router,
@@ -25,3 +26,4 @@ router.include_router(snapshot_router.router)
 router.include_router(system_router.router)
 router.include_router(analytics_router.router)
 router.include_router(notification_router.router)
+router.include_router(audit_router.router)

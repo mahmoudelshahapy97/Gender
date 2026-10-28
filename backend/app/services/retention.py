@@ -107,10 +107,22 @@ async def purge_old_data() -> PurgeReport:
     return report
 
 
+async def purge_feeds() -> None:
+    """Old audit entries (notifications have their own pass above)."""
+    from app.services.audit_service import audit_service
+
+    try:
+        if config.audit_retention_days > 0:
+            await audit_service.purge_older_than(config.audit_retention_days)
+    except Exception:
+        logger.exception("Notification / audit retention pass failed")
+
+
 async def _loop() -> None:
     interval = max(60.0, config.retention_interval_s)
     while True:
         await purge_old_data()
+        await purge_feeds()
         await asyncio.sleep(interval)
 
 
