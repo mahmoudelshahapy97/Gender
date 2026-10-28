@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { LOCATION_LEVELS } from "../utils/constants";
+import i18n from "i18next";
 
 // Days and hours are cut in the viewer's zone, so "busiest hour" means theirs.
 export const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -8,10 +9,10 @@ export const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC
 const STORAGE_KEY = "gender:filters";
 
 export const RANGE_PRESETS = [
-  { key: "today", label: "Today", days: 1 },
-  { key: "7d", label: "7 days", days: 7 },
-  { key: "30d", label: "30 days", days: 30 },
-  { key: "90d", label: "90 days", days: 90 },
+  { key: "today", get label() { return i18n.t("useFilters.today"); }, days: 1 },
+  { key: "7d", get label() { return i18n.t("useFilters.7Days"); }, days: 7 },
+  { key: "30d", get label() { return i18n.t("useFilters.30Days"); }, days: 30 },
+  { key: "90d", get label() { return i18n.t("useFilters.90Days"); }, days: 90 },
 ];
 
 export function presetRange(days) {

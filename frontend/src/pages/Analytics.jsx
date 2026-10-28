@@ -32,13 +32,15 @@ import { useFilters } from "../hooks/useFilters";
 import { barStyle, lineStyle, useBaseOptions } from "../utils/charts";
 import { GENDERS, GENDER_COLOR, GENDER_LABEL, LOCATION_LEVELS } from "../utils/constants";
 import { formatDuration, formatNumber } from "../utils/format";
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 const TABS = [
-  { key: "camera", label: "Per camera" },
-  { key: "weekday", label: "Weekday by zone" },
-  { key: "trends", label: "Ratio trends" },
-  { key: "location", label: "By location" },
-  { key: "hours", label: "Peak hours" },
+  { key: "camera", get label() { return i18n.t("analytics.perCamera"); } },
+  { key: "weekday", get label() { return i18n.t("analytics.weekdayByZone"); } },
+  { key: "trends", get label() { return i18n.t("analytics.ratioTrends"); } },
+  { key: "location", get label() { return i18n.t("analytics.byLocation"); } },
+  { key: "hours", get label() { return i18n.t("analytics.peakHours"); } },
 ];
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -70,6 +72,7 @@ function ChartCard({ title, subtitle, height = 340, action, children }) {
 }
 
 function GenderToggle({ value, onChange, allowAll = false }) {
+  const { t } = useTranslation();
   return (
     <ToggleButtonGroup
       size="small"
@@ -77,7 +80,7 @@ function GenderToggle({ value, onChange, allowAll = false }) {
       value={value}
       onChange={(_, next) => next !== null && onChange(next)}
     >
-      {allowAll && <ToggleButton value="all">All</ToggleButton>}
+      {allowAll && <ToggleButton value="all">{t("analytics.all")}</ToggleButton>}
       {GENDERS.map((g) => (
         <ToggleButton key={g} value={g} sx={{ "&.Mui-selected": { color: GENDER_COLOR[g] } }}>
           {GENDER_LABEL[g]}
@@ -89,14 +92,16 @@ function GenderToggle({ value, onChange, allowAll = false }) {
 
 /** Wraps a request: loading, error and empty states in one place. */
 function Chart({ request, empty, children }) {
+  const { t } = useTranslation();
   if (request.loading && !request.data) return <Loading height="100%" />;
   if (request.error) return <ErrorState error={request.error} onRetry={request.refresh} />;
-  if (empty) return <EmptyState title="Nothing in this range" description="Widen the dates or the filters." />;
+  if (empty) return <EmptyState title={t("analytics.nothingInThisRange")} description={t("analytics.widenTheDatesOrThe")} />;
   return children;
 }
 
 // --------------------------------------------------- InsightEye: per camera
 function PerCamera({ params, paramsKey, theme }) {
+  const { t } = useTranslation();
   const base = useBaseOptions(theme);
   // All three genders at once, so the chart compares them side by side - the
   // InsightEye Average Male / Average Female charts, merged.
@@ -130,8 +135,8 @@ function PerCamera({ params, paramsKey, theme }) {
     <Grid container spacing={2}>
       <Grid size={12}>
         <ChartCard
-          title="Average people in view, per camera"
-          subtitle="InsightEye's Average Male / Female per Camera, from the minute-by-minute snapshots"
+          title={t("analytics.averagePeopleInViewPer")}
+          subtitle={t("analytics.insighteyeSAverageMaleFemale")}
         >
           <Chart request={request} empty={!rows.length}>
             <Bar data={chart} options={base} />
@@ -144,19 +149,19 @@ function PerCamera({ params, paramsKey, theme }) {
             <Table size="small" sx={{ "& th, & td": { px: 1.5 } }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Camera</TableCell>
-                  <TableCell>Zone</TableCell>
+                  <TableCell>{t("analytics.camera")}</TableCell>
+                  <TableCell>{t("analytics.zone")}</TableCell>
                   {GENDERS.map((g) => (
                     <TableCell key={g} align="right">
-                      {GENDER_LABEL[g]} avg / max
+                      {t("analytics.v0AvgMax", { v0: GENDER_LABEL[g] })}
                     </TableCell>
                   ))}
                   {GENDERS.map((g) => (
                     <TableCell key={`v-${g}`} align="right">
-                      {GENDER_LABEL[g]} visits
+                      {t("analytics.v0Visits", { v0: GENDER_LABEL[g] })}
                     </TableCell>
                   ))}
-                  <TableCell align="right">Snapshots</TableCell>
+                  <TableCell align="right">{t("analytics.snapshots")}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -194,6 +199,7 @@ function PerCamera({ params, paramsKey, theme }) {
 
 // ---------------------------------------------- InsightEye: weekday by zone
 function WeekdayByZone({ params, paramsKey, theme }) {
+  const { t } = useTranslation();
   const [gender, setGender] = useState("male");
   const base = useBaseOptions(theme);
   const request = useAsync(
@@ -217,8 +223,8 @@ function WeekdayByZone({ params, paramsKey, theme }) {
 
   return (
     <ChartCard
-      title={`Average ${GENDER_LABEL[gender].toLowerCase()} in view, by weekday and zone`}
-      subtitle="InsightEye's Average Male / Female Weekday charts"
+      title={t("analytics.averageV0InViewBy", { v0: GENDER_LABEL[gender].toLowerCase() })}
+      subtitle={t("analytics.insighteyeSAverageMaleFemale2")}
       height={380}
       action={<GenderToggle value={gender} onChange={setGender} />}
     >
@@ -231,6 +237,7 @@ function WeekdayByZone({ params, paramsKey, theme }) {
 
 // ------------------------------------------------------------ ratio trends
 function RatioTrends({ params, paramsKey, theme }) {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState("day");
   const [source, setSource] = useState("visits");
   const base = useBaseOptions(theme, { integer: source === "visits" });
@@ -277,11 +284,11 @@ function RatioTrends({ params, paramsKey, theme }) {
 
   const controls = (
     <Stack direction="row" spacing={1}>
-      <TextField select size="small" value={source} onChange={(e) => setSource(e.target.value)} label="Source">
-        <MenuItem value="visits">Visits (people)</MenuItem>
-        <MenuItem value="occupancy">Occupancy (average)</MenuItem>
+      <TextField select size="small" value={source} onChange={(e) => setSource(e.target.value)} label={t("analytics.source")}>
+        <MenuItem value="visits">{t("analytics.visitsPeople")}</MenuItem>
+        <MenuItem value="occupancy">{t("analytics.occupancyAverage")}</MenuItem>
       </TextField>
-      <TextField select size="small" value={period} onChange={(e) => setPeriod(e.target.value)} label="Per">
+      <TextField select size="small" value={period} onChange={(e) => setPeriod(e.target.value)} label={t("analytics.per")}>
         {["hour", "day", "week", "month"].map((i) => (
           <MenuItem key={i} value={i}>
             {i}
@@ -295,8 +302,8 @@ function RatioTrends({ params, paramsKey, theme }) {
     <Grid container spacing={2}>
       <Grid size={12}>
         <ChartCard
-          title={source === "visits" ? "Visits by gender" : "Average people in view by gender"}
-          subtitle="Unlabelled people are left out of the lines and the shares"
+          title={source === "visits" ? t("analytics.visitsByGender") : t("analytics.averagePeopleInViewBy")}
+          subtitle={t("analytics.unlabelledPeopleAreLeftOut")}
           action={controls}
         >
           <Chart request={request} empty={!series.length}>
@@ -305,7 +312,7 @@ function RatioTrends({ params, paramsKey, theme }) {
         </ChartCard>
       </Grid>
       <Grid size={12}>
-        <ChartCard title="Share of each gender" subtitle="Of the labelled people, per period" height={260}>
+        <ChartCard title={t("analytics.shareOfEachGender")} subtitle={t("analytics.ofTheLabelledPeoplePer")} height={260}>
           <Chart request={request} empty={!series.length}>
             <Bar data={shares} options={stackedPct} />
           </Chart>
@@ -317,6 +324,7 @@ function RatioTrends({ params, paramsKey, theme }) {
 
 // ---------------------------------------------------------- by location
 function ByLocation({ params, paramsKey, theme }) {
+  const { t } = useTranslation();
   const [groupBy, setGroupBy] = useState("zone");
   const base = useBaseOptions(theme, { stacked: true, integer: true });
   const request = useAsync(
@@ -342,9 +350,9 @@ function ByLocation({ params, paramsKey, theme }) {
     <Grid container spacing={2}>
       <Grid size={12}>
         <ChartCard
-          title="Visits by gender per place"
+          title={t("analytics.visitsByGenderPerPlace")}
           action={
-            <TextField select size="small" label="Group by" value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
+            <TextField select size="small" label={t("analytics.groupBy")} value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
               {LOCATION_LEVELS.map((level) => (
                 <MenuItem key={level.column} value={level.column}>
                   {level.label}
@@ -365,16 +373,16 @@ function ByLocation({ params, paramsKey, theme }) {
               <TableHead>
                 <TableRow>
                   <TableCell>{LOCATION_LEVELS.find((l) => l.column === groupBy)?.label}</TableCell>
-                  <TableCell align="right">Visits</TableCell>
+                  <TableCell align="right">{t("analytics.visits")}</TableCell>
                   {GENDERS.map((g) => (
                     <TableCell key={g} align="right">
                       {GENDER_LABEL[g]} %
                     </TableCell>
                   ))}
-                  <TableCell align="right">Avg dwell</TableCell>
+                  <TableCell align="right">{t("analytics.avgDwell")}</TableCell>
                   {GENDERS.map((g) => (
                     <TableCell key={`o-${g}`} align="right">
-                      Avg {GENDER_LABEL[g].toLowerCase()} in view
+                      {t("analytics.avgV0InView", { v0: GENDER_LABEL[g].toLowerCase() })}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -408,6 +416,7 @@ function ByLocation({ params, paramsKey, theme }) {
 
 // ------------------------------------------------------------ peak hours
 function PeakHours({ params, paramsKey, theme }) {
+  const { t } = useTranslation();
   const [gender, setGender] = useState("all");
   const base = useBaseOptions(theme, { integer: true });
   const peaks = useAsync(({ signal }) => analytics.peakHours(params, { signal }), [paramsKey]);
@@ -442,7 +451,7 @@ function PeakHours({ params, paramsKey, theme }) {
             <Card key={g} sx={{ flex: "1 1 180px" }}>
               <CardContent>
                 <Typography variant="overline" color="text.secondary">
-                  Busiest hour, {GENDER_LABEL[g].toLowerCase()}
+                  {t("analytics.busiestHourV0", { v0: GENDER_LABEL[g].toLowerCase() })}
                 </Typography>
                 <Typography variant="h5" sx={{ color: GENDER_COLOR[g] }}>
                   {peakLabel(peaks.data?.data?.[`peak_${g}_hour`])}
@@ -453,7 +462,7 @@ function PeakHours({ params, paramsKey, theme }) {
         </Stack>
       </Grid>
       <Grid size={12}>
-        <ChartCard title="Visits by hour of day" subtitle="When each person was first seen, in your timezone">
+        <ChartCard title={t("analytics.visitsByHourOfDay")} subtitle={t("analytics.whenEachPersonWasFirst")}>
           <Chart request={peaks} empty={!anyVisits}>
             <Bar data={chart} options={base} />
           </Chart>
@@ -461,7 +470,7 @@ function PeakHours({ params, paramsKey, theme }) {
       </Grid>
       <Grid size={12}>
         <ChartCard
-          title="Visits by weekday and hour"
+          title={t("analytics.visitsByWeekdayAndHour")}
           height="auto"
           action={<GenderToggle value={gender} onChange={setGender} allowAll />}
         >
@@ -475,6 +484,7 @@ function PeakHours({ params, paramsKey, theme }) {
 }
 
 export default function Analytics() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [tab, setTab] = useState("camera");
   const { filters, setFilters, reset, params, paramsKey } = useFilters();
@@ -483,8 +493,8 @@ export default function Analytics() {
   return (
     <Box>
       <PageHeader
-        title="Analytics"
-        subtitle="Gender over time, place and hour. Visits count people; occupancy averages who was in view."
+        title={t("analytics.analytics")}
+        subtitle={t("analytics.genderOverTimePlaceAnd")}
       />
       <GenderFilterBar filters={filters} setFilters={setFilters} reset={reset} />
 

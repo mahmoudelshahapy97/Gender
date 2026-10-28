@@ -23,6 +23,7 @@ import { useAsync } from "../hooks/useAsync";
 import { useFilters } from "../hooks/useFilters";
 import { GENDERS } from "../utils/constants";
 import { formatDateTime, fromNow } from "../utils/format";
+import { useTranslation } from "react-i18next";
 
 const PER_PAGE = 24;
 
@@ -38,6 +39,7 @@ function Counts({ row }) {
 }
 
 function Frame({ row, height }) {
+  const { t } = useTranslation();
   if (!row.has_frame) {
     return (
       <Box sx={{ height, display: "grid", placeItems: "center", bgcolor: "action.hover" }}>
@@ -50,13 +52,14 @@ function Frame({ row, height }) {
       component="img"
       loading="lazy"
       src={snapshots.frameUrl(row.snapshot_id)}
-      alt={`${row.camera_name} at ${formatDateTime(row.captured_at)}`}
+      alt={t("snapshots.cameraNameAtV1", { camera_name: row.camera_name, v1: formatDateTime(row.captured_at) })}
       sx={{ height, objectFit: "cover", bgcolor: "black" }}
     />
   );
 }
 
 export default function Snapshots() {
+  const { t } = useTranslation();
   const { filters, setFilters, reset, params, paramsKey } = useFilters();
   const [page, setPage] = useState(1);
   const [minPeople, setMinPeople] = useState(1);
@@ -76,8 +79,8 @@ export default function Snapshots() {
   return (
     <Box>
       <PageHeader
-        title="Snapshots"
-        subtitle="Who each camera had in view, once a minute, with the annotated frame."
+        title={t("snapshots.snapshots")}
+        subtitle={t("snapshots.whoEachCameraHadIn")}
       />
       <GenderFilterBar
         filters={filters}
@@ -92,7 +95,7 @@ export default function Snapshots() {
         <TextField
           type="number"
           size="small"
-          label="At least N people"
+          label={t("snapshots.atLeastNPeople")}
           value={minPeople}
           onChange={(e) => {
             setMinPeople(Math.max(0, Number(e.target.value) || 0));
@@ -103,12 +106,12 @@ export default function Snapshots() {
         />
         {data && (
           <Typography variant="body2" color="text.secondary">
-            {data.total.toLocaleString()} snapshot(s)
+            {t("snapshots.v0SnapshotS", { v0: data.total.toLocaleString() })}
           </Typography>
         )}
       </Stack>
 
-      <ErrorState error={request.error} onRetry={request.refresh} title="Could not load snapshots" />
+      <ErrorState error={request.error} onRetry={request.refresh} title={t("snapshots.couldNotLoadSnapshots")} />
       {request.loading && !data ? (
         <Loading />
       ) : data?.items?.length ? (
@@ -129,7 +132,7 @@ export default function Snapshots() {
                         </Typography>
                       </Stack>
                       <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 1 }}>
-                        {formatDateTime(row.captured_at)} · {row.person_count} in view
+                        {t("snapshots.v0PersonCountInView", { v0: formatDateTime(row.captured_at), person_count: row.person_count })}
                       </Typography>
                       <Counts row={row} />
                     </CardContent>
@@ -144,8 +147,8 @@ export default function Snapshots() {
         </>
       ) : (
         <EmptyState
-          title="No snapshots"
-          description="A running camera writes one every minute. Lower the people threshold or widen the dates."
+          title={t("snapshots.noSnapshots")}
+          description={t("snapshots.aRunningCameraWritesOne")}
         />
       )}
 
@@ -160,17 +163,17 @@ export default function Snapshots() {
                 <Box
                   component="img"
                   src={snapshots.frameUrl(open.snapshot_id)}
-                  alt="Annotated frame"
+                  alt={t("snapshots.annotatedFrame")}
                   sx={{ width: "100%", borderRadius: 1, mb: 2 }}
                 />
               )}
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Typography variant="body2">{open.person_count} in view</Typography>
+                <Typography variant="body2">{t("snapshots.personCountInView", { person_count: open.person_count })}</Typography>
                 <Counts row={open} />
                 <Typography variant="body2" color="text.secondary">
                   {[open.location, open.area, open.building, open.floor_level, open.zone]
                     .filter(Boolean)
-                    .join(" › ") || "No location set"}
+                    .join(" › ") || t("snapshots.noLocationSet")}
                 </Typography>
               </Stack>
             </DialogContent>

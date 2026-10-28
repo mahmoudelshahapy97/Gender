@@ -1,3 +1,4 @@
+import i18n from "i18next";
 /**
  * Mirrors the CHECK constraints in database/schema.sql (visit.gender) and
  * GENDER_CLASS_MAP in backend/.env — keep them in step.
@@ -10,10 +11,10 @@ export const GENDERS = ["male", "female", "child"];
 export const VISIT_GENDERS = [...GENDERS, "unknown"];
 
 export const GENDER_LABEL = {
-  male: "Male",
-  female: "Female",
-  child: "Child",
-  unknown: "Unknown",
+  get male() { return i18n.t("constants.male"); },
+  get female() { return i18n.t("constants.female"); },
+  get child() { return i18n.t("constants.child"); },
+  get unknown() { return i18n.t("constants.unknown"); },
 };
 
 /**
@@ -30,11 +31,11 @@ export const GENDER_COLOR = {
 
 /** The five location levels a camera carries, coarse to fine (InsightEye's order). */
 export const LOCATION_LEVELS = [
-  { key: "locations", column: "location", label: "Location" },
-  { key: "areas", column: "area", label: "Area" },
-  { key: "buildings", column: "building", label: "Building" },
-  { key: "floor_levels", column: "floor_level", label: "Floor" },
-  { key: "zones", column: "zone", label: "Zone" },
+  { key: "locations", column: "location", get label() { return i18n.t("constants.location"); } },
+  { key: "areas", column: "area", get label() { return i18n.t("constants.area"); } },
+  { key: "buildings", column: "building", get label() { return i18n.t("constants.building"); } },
+  { key: "floor_levels", column: "floor_level", get label() { return i18n.t("constants.floor"); } },
+  { key: "zones", column: "zone", get label() { return i18n.t("constants.zone"); } },
 ];
 
 /** A camera's place as one line, coarse to fine: "Cairo HQ › North Wing › …". */
@@ -57,10 +58,10 @@ export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 export const NOTIFICATION_KINDS = ["occupancy_high", "occupancy_low", "camera_offline", "camera_online"];
 
 export const NOTIFICATION_KIND_LABEL = {
-  occupancy_high: "Crowding",
-  occupancy_low: "Low occupancy",
-  camera_offline: "Camera offline",
-  camera_online: "Back online",
+  get occupancy_high() { return i18n.t("constants.crowding"); },
+  get occupancy_low() { return i18n.t("constants.lowOccupancy"); },
+  get camera_offline() { return i18n.t("constants.cameraOffline"); },
+  get camera_online() { return i18n.t("constants.backOnline"); },
 };
 
 /** MUI palette key per severity, for icons, chips and toasts. */

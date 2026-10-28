@@ -26,15 +26,18 @@ import { useAsync } from "../hooks/useAsync";
 import { useFilters } from "../hooks/useFilters";
 import { GENDER_LABEL, PAGE_SIZE, PAGE_SIZE_OPTIONS, VISIT_GENDERS } from "../utils/constants";
 import { formatDateTime, formatDuration, formatScore } from "../utils/format";
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 /** "male 1.6 · female 0.4" - the confidence-weighted votes behind a label. */
 const describeVotes = (votes) =>
   Object.entries(votes || {})
     .sort((a, b) => b[1] - a[1])
     .map(([label, weight]) => `${GENDER_LABEL[label] || label} ${Number(weight).toFixed(2)}`)
-    .join(" · ") || "No gender votes";
+    .join(" · ") || i18n.t("visits.noVotes");
 
 export default function Visits() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { filters, setFilters, reset, params, paramsKey } = useFilters();
   const [gender, setGender] = useState("");
@@ -60,7 +63,7 @@ export default function Visits() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error(errorMessage(err) || "Export failed");
+      toast.error(errorMessage(err) || t("visits.exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -69,11 +72,11 @@ export default function Visits() {
   return (
     <Box>
       <PageHeader
-        title="Visits"
-        subtitle="One row per person: when they were first and last seen, and the gender their track settled on."
+        title={t("visits.visits")}
+        subtitle={t("visits.oneRowPerPersonWhen")}
         actions={[
           <Button key="csv" startIcon={<DownloadIcon />} onClick={exportCsv} disabled={exporting}>
-            Export CSV
+            {t("visits.exportCsv")}
           </Button>,
         ]}
       />
@@ -90,7 +93,7 @@ export default function Visits() {
         <TextField
           select
           size="small"
-          label="Gender"
+          label={t("visits.gender")}
           value={gender}
           onChange={(e) => {
             setGender(e.target.value);
@@ -98,7 +101,7 @@ export default function Visits() {
           }}
           sx={{ minWidth: 160 }}
         >
-          <MenuItem value="">All</MenuItem>
+          <MenuItem value="">{t("visits.all")}</MenuItem>
           {VISIT_GENDERS.map((g) => (
             <MenuItem key={g} value={g}>
               {GENDER_LABEL[g]}
@@ -107,7 +110,7 @@ export default function Visits() {
         </TextField>
       </Stack>
 
-      <ErrorState error={request.error} onRetry={request.refresh} title="Could not load visits" />
+      <ErrorState error={request.error} onRetry={request.refresh} title={t("visits.couldNotLoadVisits")} />
       <Card>
         {request.loading && !data ? (
           <Loading />
@@ -117,13 +120,13 @@ export default function Visits() {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>First seen</TableCell>
-                    <TableCell>Camera</TableCell>
-                    <TableCell>Zone</TableCell>
-                    <TableCell>Gender</TableCell>
-                    <TableCell align="right">Confidence</TableCell>
-                    <TableCell align="right">Dwell</TableCell>
-                    <TableCell>Last seen</TableCell>
+                    <TableCell>{t("visits.firstSeen")}</TableCell>
+                    <TableCell>{t("visits.camera")}</TableCell>
+                    <TableCell>{t("visits.zone")}</TableCell>
+                    <TableCell>{t("visits.gender")}</TableCell>
+                    <TableCell align="right">{t("visits.confidence")}</TableCell>
+                    <TableCell align="right">{t("visits.dwell")}</TableCell>
+                    <TableCell>{t("visits.lastSeen")}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -169,8 +172,8 @@ export default function Visits() {
           </>
         ) : (
           <EmptyState
-            title="No visits"
-            description="A visit is written when a tracked person leaves the view. Widen the dates or the filters."
+            title={t("visits.noVisits")}
+            description={t("visits.aVisitIsWrittenWhen")}
           />
         )}
       </Card>

@@ -22,14 +22,16 @@ import { useToast } from "../../components/Toast";
 import { ErrorState, Loading } from "../../components/DataStates";
 import PageHeader from "../../components/PageHeader";
 import { parseJsonField } from "../../utils/format";
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 /** InsightEye's location hierarchy, coarse to fine: what the analytics filter and group by. */
 const LOCATION_FIELDS = [
-  { key: "location", label: "Location", placeholder: "Cairo HQ" },
-  { key: "area", label: "Area", placeholder: "North wing" },
-  { key: "building", label: "Building", placeholder: "B1" },
-  { key: "floor_level", label: "Floor", placeholder: "Ground" },
-  { key: "zone", label: "Zone", placeholder: "Main entrance" },
+  { key: "location", get label() { return i18n.t("cameraForm.location"); }, get placeholder() { return i18n.t("cameraForm.phLocation"); } },
+  { key: "area", get label() { return i18n.t("cameraForm.area"); }, get placeholder() { return i18n.t("cameraForm.phArea"); } },
+  { key: "building", get label() { return i18n.t("cameraForm.building"); }, placeholder: "B1" },
+  { key: "floor_level", get label() { return i18n.t("cameraForm.floor"); }, get placeholder() { return i18n.t("cameraForm.phFloor"); } },
+  { key: "zone", get label() { return i18n.t("cameraForm.zone"); }, get placeholder() { return i18n.t("cameraForm.phZone"); } },
 ];
 
 /**
@@ -42,33 +44,33 @@ const LOCATION_FIELDS = [
 const OVERRIDE_FIELDS = [
   {
     key: "snapshot_interval_s",
-    label: "Snapshot every",
+    get label() { return i18n.t("cameraForm.snapshotEvery"); },
     unit: "s",
-    help: "How often occupancy (and its annotated frame) is stored. Default 60s.",
+    get help() { return i18n.t("cameraForm.howOftenOccupancyAndIts"); },
     min: 5,
     max: 3600,
   },
   {
     key: "gender_every_n",
-    label: "Gender model every",
+    get label() { return i18n.t("cameraForm.genderModelEvery"); },
     unit: "frames",
-    help: "gender.pt runs on every Nth processed frame. InsightEye uses 3.",
+    get help() { return i18n.t("cameraForm.genderPtRunsOnEvery"); },
     min: 1,
     max: 100,
   },
   {
     key: "min_votes",
-    label: "Votes to settle a label",
+    get label() { return i18n.t("cameraForm.votesToSettleALabel"); },
     unit: "votes",
-    help: "A person stays 'unknown' until gender.pt has labelled them this often.",
+    get help() { return i18n.t("cameraForm.aPersonStaysUnknownUntil"); },
     min: 1,
     max: 50,
   },
   {
     key: "visit_gap_seconds",
-    label: "Visit ends after",
+    get label() { return i18n.t("cameraForm.visitEndsAfter"); },
     unit: "s",
-    help: "A person unseen this long has left, and their visit is written.",
+    get help() { return i18n.t("cameraForm.aPersonUnseenThisLong"); },
     min: 1,
     max: 600,
   },
@@ -82,13 +84,13 @@ const OVERRIDE_FIELDS = [
 const ALERT_FIELDS = [
   {
     key: "alert_max_people",
-    label: "Alert above",
-    help: "Notify when more people than this stay in view. Blank: no crowding alert.",
+    get label() { return i18n.t("cameraForm.alertAbove"); },
+    get help() { return i18n.t("cameraForm.notifyWhenMorePeopleThan"); },
   },
   {
     key: "alert_min_people",
-    label: "Alert below",
-    help: "Notify when fewer people than this stay in view, e.g. an unstaffed desk. Blank: off.",
+    get label() { return i18n.t("cameraForm.alertBelow"); },
+    get help() { return i18n.t("cameraForm.notifyWhenFewerPeopleThan"); },
   },
 ];
 
@@ -105,27 +107,27 @@ const isBlank = (raw) => raw === "" || raw === null || raw === undefined;
 
 function validate(values) {
   const errors = {};
-  if (!values.name.trim()) errors.name = "Required";
-  else if (values.name.length > 120) errors.name = "At most 120 characters";
+  if (!values.name.trim()) errors.name = i18n.t("cameraForm.required");
+  else if (values.name.length > 120) errors.name = i18n.t("cameraForm.atMost120Characters");
 
-  if (!values.rtsp_url.trim()) errors.rtsp_url = "Required";
+  if (!values.rtsp_url.trim()) errors.rtsp_url = i18n.t("cameraForm.required");
   LOCATION_FIELDS.forEach(({ key }) => {
-    if (values[key].length > 200) errors[key] = "At most 200 characters";
+    if (values[key].length > 200) errors[key] = i18n.t("cameraForm.atMost200Characters");
   });
 
   OVERRIDE_FIELDS.forEach(({ key, min, max }) => {
     const raw = values[key];
     if (raw === "" || raw === null || raw === undefined) return;
     const value = Number(raw);
-    if (Number.isNaN(value)) errors[key] = "Must be a number";
-    else if (value < min || value > max) errors[key] = `Between ${min} and ${max}`;
+    if (Number.isNaN(value)) errors[key] = i18n.t("cameraForm.mustBeANumber");
+    else if (value < min || value > max) errors[key] = i18n.t("cameraForm.betweenMinAndMax", { min, max });
   });
 
   ALERT_FIELDS.forEach(({ key }) => {
     const raw = values[key];
     if (isBlank(raw)) return;
     const value = Number(raw);
-    if (!Number.isInteger(value) || value < 0) errors[key] = "A whole number, 0 or more";
+    if (!Number.isInteger(value) || value < 0) errors[key] = i18n.t("cameraForm.aWholeNumber0Or");
   });
   if (
     !errors.alert_max_people &&
@@ -134,13 +136,14 @@ function validate(values) {
     !isBlank(values.alert_min_people) &&
     Number(values.alert_min_people) > Number(values.alert_max_people)
   ) {
-    errors.alert_min_people = "Above the crowding limit";
+    errors.alert_min_people = i18n.t("cameraForm.aboveTheCrowdingLimit");
   }
 
   return errors;
 }
 
 export default function CameraForm() {
+  const { t } = useTranslation();
   const { cameraId } = useParams();
   const isEdit = Boolean(cameraId);
   const navigate = useNavigate();
@@ -208,11 +211,11 @@ export default function CameraForm() {
     try {
       if (isEdit) {
         await camerasApi.update(cameraId, payload);
-        toast.success(`Camera "${payload.name}" updated.`);
+        toast.success(t("cameraForm.cameraNameUpdated", { name: payload.name }));
         navigate(`/cameras/${cameraId}`);
       } else {
         const created = await camerasApi.create(payload);
-        toast.success(`Camera "${created.name}" registered.`);
+        toast.success(t("cameraForm.cameraNameRegistered", { name: created.name }));
         navigate(`/cameras/${created.camera_id}`);
       }
     } catch (err) {
@@ -222,7 +225,7 @@ export default function CameraForm() {
     }
   };
 
-  if (isEdit && loading && !camera) return <Loading label="Loading camera…" />;
+  if (isEdit && loading && !camera) return <Loading label={t("cameraForm.loadingCamera")} />;
   if (isEdit && loadError) return <ErrorState error={loadError} onRetry={refresh} />;
 
   return (
@@ -232,15 +235,15 @@ export default function CameraForm() {
         onClick={() => navigate(isEdit ? `/cameras/${cameraId}` : "/cameras")}
         sx={{ mb: 2 }}
       >
-        Back
+        {t("cameraForm.back")}
       </Button>
 
       <PageHeader
-        title={isEdit ? `Edit ${camera?.name || "camera"}` : "Register a camera"}
+        title={isEdit ? t("cameraForm.editV0", { v0: camera?.name || "camera" }) : t("cameraForm.registerACamera")}
         subtitle={
           isEdit
-            ? "A running worker is restarted when you save, so changes take effect at once."
-            : "An enabled camera starts counting as soon as it is saved."
+            ? t("cameraForm.aRunningWorkerIsRestarted")
+            : t("cameraForm.anEnabledCameraStartsCounting")
         }
       />
 
@@ -250,35 +253,35 @@ export default function CameraForm() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-                  Source
+                  {t("cameraForm.source")}
                 </Typography>
                 <Stack spacing={2.5}>
                   <TextField
-                    label="Name"
+                    label={t("cameraForm.name")}
                     value={values.name}
                     onChange={setField("name")}
                     error={Boolean(errors.name)}
-                    helperText={errors.name || "Must be unique within this workspace."}
+                    helperText={errors.name || t("cameraForm.mustBeUniqueWithinThis")}
                     required
                     fullWidth
                     autoFocus
                   />
                   <TextField
-                    label="RTSP URL"
+                    label={t("cameraForm.rtspUrl")}
                     value={values.rtsp_url}
                     onChange={setField("rtsp_url")}
                     error={Boolean(errors.rtsp_url)}
                     helperText={
                       errors.rtsp_url ||
-                      "rtsp://user:pass@host:554/stream, or a file path inside the API container for testing."
+                      t("cameraForm.rtspUserPassHost554")
                     }
                     required
                     fullWidth
-                    placeholder="rtsp://mediamtx:8554/gender"
+                    placeholder={t("cameraForm.rtspMediamtx8554Gender")}
                   />
                   <FormControlLabel
                     control={<Switch checked={values.enabled} onChange={setField("enabled")} />}
-                    label="Enabled"
+                    label={t("cameraForm.enabled")}
                   />
                 </Stack>
               </CardContent>
@@ -286,10 +289,10 @@ export default function CameraForm() {
             <Card sx={{ mt: 2 }}>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Place
+                  {t("cameraForm.place")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
-                  The analytics filter and group by these, coarse to fine. All optional.
+                  {t("cameraForm.theAnalyticsFilterAndGroup")}
                 </Typography>
                 <Grid container spacing={2}>
                   {LOCATION_FIELDS.map(({ key, label, placeholder }) => (
@@ -314,11 +317,10 @@ export default function CameraForm() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Counting
+                  {t("cameraForm.counting")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
-                  Leave a field blank to inherit the global value from the API's environment. A
-                  blank is not zero.
+                  {t("cameraForm.leaveAFieldBlankTo")}
                 </Typography>
                 <Divider sx={{ mb: 2.5 }} />
                 <Stack spacing={2.5}>
@@ -345,11 +347,10 @@ export default function CameraForm() {
             <Card sx={{ mt: 2 }}>
               <CardContent>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Alerts
+                  {t("cameraForm.alerts")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
-                  Everyone who can see this workspace is notified, and mailed if they opted in. The
-                  count has to stay past a limit for a few seconds, and alerts once per crossing.
+                  {t("cameraForm.everyoneWhoCanSeeThis")}
                 </Typography>
                 <Divider sx={{ mb: 2.5 }} />
                 <Stack spacing={2.5}>
@@ -366,7 +367,7 @@ export default function CameraForm() {
                       slotProps={{
                         htmlInput: { min: 0, step: 1 },
                         input: {
-                          endAdornment: <InputAdornment position="end">people</InputAdornment>,
+                          endAdornment: <InputAdornment position="end">{t("cameraForm.people")}</InputAdornment>,
                         },
                       }}
                     />
@@ -384,14 +385,14 @@ export default function CameraForm() {
             ) : null}
             <Stack direction="row" spacing={1}>
               <Button type="submit" variant="contained" disabled={saving}>
-                {saving ? "Saving…" : isEdit ? "Save changes" : "Register camera"}
+                {saving ? t("cameraForm.saving") : isEdit ? t("cameraForm.saveChanges") : t("cameraForm.registerCamera")}
               </Button>
               <Button
                 color="inherit"
                 disabled={saving}
                 onClick={() => navigate(isEdit ? `/cameras/${cameraId}` : "/cameras")}
               >
-                Cancel
+                {t("cameraForm.cancel")}
               </Button>
             </Stack>
           </Grid>

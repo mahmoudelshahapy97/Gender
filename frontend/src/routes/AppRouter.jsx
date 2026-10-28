@@ -1,11 +1,9 @@
 import { Suspense, lazy } from "react";
+import { useTranslation } from "react-i18next";
+import { AuthLayout, Loading, RequireAuth } from "@insighteye/ui";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import ProductIcon from "@mui/icons-material/Wc";
 import AppLayout from "../layouts/AppLayout";
-import AuthLayout from "../layouts/AuthLayout";
-import { Loading } from "../components/DataStates";
-import { RequireAuth } from "./RequireAuth";
-import { WorkspaceProvider } from "../workspace/WorkspaceContext";
-import { NotificationsProvider } from "../notifications/NotificationsContext";
 
 // Code-split per route: the dashboard is the landing screen and has no business
 // downloading the analytics charts before it can paint.
@@ -23,14 +21,18 @@ const SystemStatus = lazy(() => import("../pages/SystemStatus"));
 const Notifications = lazy(() => import("../pages/Notifications"));
 const Users = lazy(() => import("../pages/admin/Users"));
 const Workspaces = lazy(() => import("../pages/admin/Workspaces"));
+const LiveWall = lazy(() => import("../pages/LiveWall"));
+const AuditLog = lazy(() => import("../pages/admin/AuditLog"));
 const NotFound = lazy(() => import("../pages/NotFound"));
 
-export function AppRouter({ mode, onToggleMode }) {
+export function AppRouter() {
+  const { t } = useTranslation();
+  const product = { brand: "InsightEye", tagline: t("product.tagline"), icon: <ProductIcon /> };
   return (
     <BrowserRouter>
-      <Suspense fallback={<Loading label="Loading…" height="60vh" />}>
+      <Suspense fallback={<Loading height="60vh" />}>
         <Routes>
-          <Route element={<AuthLayout />}>
+          <Route element={<AuthLayout product={product} />}>
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
           </Route>
@@ -38,11 +40,7 @@ export function AppRouter({ mode, onToggleMode }) {
           <Route
             element={
               <RequireAuth>
-                <WorkspaceProvider>
-                  <NotificationsProvider>
-                    <AppLayout mode={mode} onToggleMode={onToggleMode} />
-                  </NotificationsProvider>
-                </WorkspaceProvider>
+                <AppLayout />
               </RequireAuth>
             }
           >
@@ -53,7 +51,7 @@ export function AppRouter({ mode, onToggleMode }) {
               <Route
                 path="new"
                 element={
-                  <RequireAuth minimum="admin">
+                  <RequireAuth perm="admin">
                     <CameraForm />
                   </RequireAuth>
                 }
@@ -62,7 +60,7 @@ export function AppRouter({ mode, onToggleMode }) {
               <Route
                 path=":cameraId/edit"
                 element={
-                  <RequireAuth minimum="admin">
+                  <RequireAuth perm="admin">
                     <CameraForm />
                   </RequireAuth>
                 }
@@ -78,7 +76,7 @@ export function AppRouter({ mode, onToggleMode }) {
             <Route
               path="/workspaces"
               element={
-                <RequireAuth minimum="admin">
+                <RequireAuth perm="admin">
                   <Workspaces />
                 </RequireAuth>
               }
@@ -87,8 +85,18 @@ export function AppRouter({ mode, onToggleMode }) {
             <Route
               path="/users"
               element={
-                <RequireAuth minimum="admin">
+                <RequireAuth perm="admin">
                   <Users />
+                </RequireAuth>
+              }
+            />
+
+            <Route path="/live" element={<LiveWall />} />
+            <Route
+              path="/audit"
+              element={
+                <RequireAuth perm="admin">
+                  <AuditLog />
                 </RequireAuth>
               }
             />

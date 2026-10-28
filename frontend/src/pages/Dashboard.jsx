@@ -38,16 +38,18 @@ import { usePolling } from "../hooks/usePolling";
 import { barStyle, useBaseOptions } from "../utils/charts";
 import { GENDERS, GENDER_COLOR, GENDER_LABEL, POLL_INTERVAL_MS } from "../utils/constants";
 import { formatDuration, formatNumber, fromNow } from "../utils/format";
+import { useTranslation } from "react-i18next";
 
 const pct = (value) => (value === null || value === undefined ? "—" : `${value.toFixed(0)}%`);
 
 /** A single bar split male / female / child by share. */
 function MixBar({ mix }) {
+  const { t } = useTranslation();
   const labelled = GENDERS.reduce((sum, g) => sum + (mix?.[g] || 0), 0);
   if (!labelled) {
     return (
       <Typography variant="caption" color="text.secondary">
-        Nobody labelled yet
+        {t("dashboard.nobodyLabelledYet")}
       </Typography>
     );
   }
@@ -75,6 +77,7 @@ function MixBar({ mix }) {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { filters, setFilters, reset, params, paramsKey } = useFilters();
   const baseOptions = useBaseOptions(theme, { stacked: true, integer: true });
@@ -133,21 +136,21 @@ export default function Dashboard() {
   return (
     <Box>
       <PageHeader
-        title="Dashboard"
-        subtitle="Who came in, and who is in view right now, by gender."
+        title={t("dashboard.dashboard")}
+        subtitle={t("dashboard.whoCameInAndWho")}
         actions={[
           <Button key="analytics" component={RouterLink} to="/analytics" startIcon={<InsightsIcon />}>
-            Open analytics
+            {t("dashboard.openAnalytics")}
           </Button>,
           <Button key="refresh" onClick={refreshAll} startIcon={<RefreshIcon />}>
-            Refresh
+            {t("dashboard.refresh")}
           </Button>,
         ]}
       />
 
       <GenderFilterBar filters={filters} setFilters={setFilters} reset={reset} showLocations={false} />
 
-      <ErrorState error={summary.error} onRetry={summary.refresh} title="Could not load the summary" />
+      <ErrorState error={summary.error} onRetry={summary.refresh} title={t("dashboard.couldNotLoadTheSummary")} />
       {summary.loading && !data ? (
         <Loading />
       ) : (
@@ -155,39 +158,39 @@ export default function Dashboard() {
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                label="Men today"
+                label={t("dashboard.menToday")}
                 value={formatNumber(today?.male ?? 0)}
-                hint={`${formatNumber(range?.male ?? 0)} in the range`}
+                hint={t("dashboard.v0InTheRange", { v0: formatNumber(range?.male ?? 0) })}
                 icon={<BoyIcon />}
                 color="primary"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                label="Women today"
+                label={t("dashboard.womenToday")}
                 value={formatNumber(today?.female ?? 0)}
-                hint={`${formatNumber(range?.female ?? 0)} in the range`}
+                hint={t("dashboard.v0InTheRange", { v0: formatNumber(range?.female ?? 0) })}
                 icon={<GirlIcon />}
                 color="secondary"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                label="Children today"
+                label={t("dashboard.childrenToday")}
                 value={formatNumber(today?.child ?? 0)}
-                hint={`${formatNumber(range?.child ?? 0)} in the range`}
+                hint={t("dashboard.v0InTheRange", { v0: formatNumber(range?.child ?? 0) })}
                 icon={<ChildCareIcon />}
                 color="warning"
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
-                label="In view now"
+                label={t("dashboard.inViewNow")}
                 value={formatNumber(now?.total ?? 0)}
                 hint={
                   now?.as_of
                     ? `M ${now.male} · F ${now.female} · C ${now.child} · ${fromNow(now.as_of)}`
-                    : "No camera reported in the last 10 minutes"
+                    : t("dashboard.noCameraReportedInThe")
                 }
                 icon={<GroupsIcon />}
                 color="info"
@@ -196,18 +199,18 @@ export default function Dashboard() {
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 dense
-                label="Visits in the range"
+                label={t("dashboard.visitsInTheRange")}
                 value={formatNumber(range?.total ?? 0)}
-                hint={`${formatNumber(range?.unknown ?? 0)} not labelled`}
+                hint={t("dashboard.v0NotLabelled", { v0: formatNumber(range?.unknown ?? 0) })}
                 icon={<GroupsIcon />}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 dense
-                label="Average dwell"
+                label={t("dashboard.averageDwell")}
                 value={formatDuration(range?.avg_dwell_s)}
-                hint="Time a person stays in view"
+                hint={t("dashboard.timeAPersonStaysIn")}
                 icon={<TimerIcon />}
                 color="success"
               />
@@ -215,9 +218,9 @@ export default function Dashboard() {
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 dense
-                label="Male : female"
+                label={t("dashboard.maleFemale")}
                 value={range?.male_female_ratio ? `${range.male_female_ratio.toFixed(2)} : 1` : "—"}
-                hint="Visits in the range"
+                hint={t("dashboard.visitsInTheRange")}
                 icon={<InsightsIcon />}
                 color="secondary"
               />
@@ -225,9 +228,9 @@ export default function Dashboard() {
             <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
               <StatCard
                 dense
-                label="Cameras running"
+                label={t("dashboard.camerasRunning")}
                 value={`${cams?.running ?? 0} / ${cams?.total ?? 0}`}
-                hint={`${cams?.connected ?? 0} connected`}
+                hint={t("dashboard.v0Connected", { v0: cams?.connected ?? 0 })}
                 icon={<VideocamIcon />}
                 color="success"
               />
@@ -238,9 +241,9 @@ export default function Dashboard() {
             <Grid size={{ xs: 12, lg: 8 }}>
               <Card sx={{ height: "100%" }}>
                 <CardContent>
-                  <Typography variant="subtitle2">Visits per day</Typography>
+                  <Typography variant="subtitle2">{t("dashboard.visitsPerDay")}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    One per person, by the gender their track settled on
+                    {t("dashboard.onePerPersonByThe")}
                   </Typography>
                   <Box sx={{ height: 280, mt: 2 }}>
                     {trend.loading && !trend.data ? (
@@ -248,7 +251,7 @@ export default function Dashboard() {
                     ) : (trend.data?.data?.series || []).length ? (
                       <Bar data={trendChart.data} options={trendChart.options} />
                     ) : (
-                      <EmptyState title="No visits in this range" />
+                      <EmptyState title={t("dashboard.noVisitsInThisRange")} />
                     )}
                   </Box>
                 </CardContent>
@@ -257,26 +260,26 @@ export default function Dashboard() {
             <Grid size={{ xs: 12, lg: 4 }}>
               <Card sx={{ height: "100%" }}>
                 <CardContent>
-                  <Typography variant="subtitle2">Gender mix</Typography>
+                  <Typography variant="subtitle2">{t("dashboard.genderMix")}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Today, then the whole range
+                    {t("dashboard.todayThenTheWholeRange")}
                   </Typography>
                   <Stack spacing={3} sx={{ mt: 2 }}>
                     <Box>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        Today
+                        {t("dashboard.today")}
                       </Typography>
                       <MixBar mix={today} />
                     </Box>
                     <Box>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        Range
+                        {t("dashboard.range")}
                       </Typography>
                       <MixBar mix={range} />
                     </Box>
                     <Box>
                       <Typography variant="body2" sx={{ mb: 1 }}>
-                        In view now
+                        {t("dashboard.inViewNow")}
                       </Typography>
                       <MixBar mix={now} />
                     </Box>
@@ -288,24 +291,24 @@ export default function Dashboard() {
 
           <Card sx={{ mt: 2 }}>
             <CardContent>
-              <Typography variant="subtitle2">Latest snapshot per camera</Typography>
+              <Typography variant="subtitle2">{t("dashboard.latestSnapshotPerCamera")}</Typography>
               <Typography variant="caption" color="text.secondary">
-                Who each camera had in view at its last snapshot
+                {t("dashboard.whoEachCameraHadIn")}
               </Typography>
               {perCamera.length ? (
                 <Table size="small" sx={{ mt: 1 }}>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Camera</TableCell>
-                      <TableCell>Zone</TableCell>
-                      <TableCell align="right">People</TableCell>
+                      <TableCell>{t("dashboard.camera")}</TableCell>
+                      <TableCell>{t("dashboard.zone")}</TableCell>
+                      <TableCell align="right">{t("dashboard.people")}</TableCell>
                       {GENDERS.map((g) => (
                         <TableCell key={g} align="right">
                           {GENDER_LABEL[g]}
                         </TableCell>
                       ))}
-                      <TableCell sx={{ width: "22%" }}>Mix</TableCell>
-                      <TableCell align="right">When</TableCell>
+                      <TableCell sx={{ width: "22%" }}>{t("dashboard.mix")}</TableCell>
+                      <TableCell align="right">{t("dashboard.when")}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -340,11 +343,11 @@ export default function Dashboard() {
                 </Table>
               ) : (
                 <EmptyState
-                  title="No snapshots yet"
-                  description="A running camera writes one every minute."
+                  title={t("dashboard.noSnapshotsYet")}
+                  description={t("dashboard.aRunningCameraWritesOne")}
                   action={
                     <Button component={RouterLink} to="/cameras" variant="outlined">
-                      Cameras
+                      {t("dashboard.cameras")}
                     </Button>
                   }
                 />

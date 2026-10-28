@@ -1,4 +1,4 @@
-import client, { mediaUrl } from "./client";
+import client, { API_BASE, mediaUrl } from "./client";
 
 /**
  * One function per backend route, so no component builds a URL by hand.
@@ -95,6 +95,11 @@ export const cameras = {
    * Bump `bust` to reconnect after the worker restarts.
    */
   streamUrl: (id, bust = Date.now()) => mediaUrl(`/cameras/${id}/stream`, { t: bust }),
+
+  /** Open the camera's stream briefly and report what it found; detection is not touched. */
+  probe: (id) => client.post(`/cameras/${id}/probe`).then((r) => r.data),
+  /** The same for every enabled camera of the workspace, a few at a time. */
+  probeAll: () => client.post("/cameras/probe-all").then((r) => r.data),
 };
 
 // --- notifications ----------------------------------------------------------
@@ -104,17 +109,28 @@ export const notifications = {
   list: (params, opts) => client.get("/notifications", { params, ...opts }).then((r) => r.data.data),
   unreadCount: (opts) =>
     client.get("/notifications/unread-count", opts).then((r) => r.data.data.unread),
-  markRead: (id) => client.post(`/notifications/${id}/read`).then((r) => r.data.data),
+  /** The listed ids, or every unread one when none are given. -> {marked, unread} */
+  markRead: (ids) =>
+    (ids?.length
+      ? client.post("/notifications/read", { notification_ids: ids })
+      : client.post("/notifications/read-all", {})
+    ).then((r) => r.data.data),
   markUnread: (id) => client.delete(`/notifications/${id}/read`).then((r) => r.data.data),
-  markAllRead: (workspaceId) =>
-    client
-      .post("/notifications/read-all", workspaceId ? { workspace_id: workspaceId } : {})
-      .then((r) => r.data.data),
+  /** A "system" notification to yourself, to check the bell and the stream end to end. */
+  sendTest: () => client.post("/notifications/test").then((r) => r.data.data),
   /**
    * Server-Sent Events, for an EventSource: cookie-authenticated like the
    * <img> routes, since an EventSource cannot send a header either.
    */
   streamUrl: () => mediaUrl("/notifications/stream"),
+};
+
+// --- audit log ----------------------------------------------------------------
+export const audit = {
+  /** {action, actor, since, until, limit, offset} -> {items, total}. Admins only. */
+  list: (params, opts) => client.get("/audit-logs", { params, ...opts }).then((r) => r.data),
+  exportBlob: (params) =>
+    client.get("/audit-logs/export.csv", { params, responseType: "blob" }).then((r) => r.data),
 };
 
 // --- analytics ------------------------------------------------------------

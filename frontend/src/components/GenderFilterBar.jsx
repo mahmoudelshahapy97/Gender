@@ -14,6 +14,7 @@ import { analytics } from "../api/endpoints";
 import { useAsync } from "../hooks/useAsync";
 import { RANGE_PRESETS, presetRange } from "../hooks/useFilters";
 import { LOCATION_LEVELS } from "../utils/constants";
+import { useTranslation } from "react-i18next";
 
 /**
  * Date range, cameras, and InsightEye's location cascade (location > area >
@@ -23,6 +24,7 @@ import { LOCATION_LEVELS } from "../utils/constants";
  * worked out here from one camera list.
  */
 export function GenderFilterBar({ filters, setFilters, reset, showLocations = true }) {
+  const { t } = useTranslation();
   const options = useAsync(({ signal }) => analytics.filterOptions({ signal }), []);
   const cameraList = options.data?.data?.cameras || [];
 
@@ -58,7 +60,7 @@ export function GenderFilterBar({ filters, setFilters, reset, showLocations = tr
                 const preset = RANGE_PRESETS.find((p) => p.key === key);
                 if (preset) setFilters(presetRange(preset.days));
               }}
-              aria-label="Date range"
+              aria-label={t("genderFilterBar.dateRange")}
             >
               {RANGE_PRESETS.map((preset) => (
                 <ToggleButton key={preset.key} value={preset.key}>
@@ -69,7 +71,7 @@ export function GenderFilterBar({ filters, setFilters, reset, showLocations = tr
           </Grid>
           <Grid size={{ xs: 6, md: 2 }}>
             <TextField
-              label="From"
+              label={t("genderFilterBar.from")}
               type="date"
               size="small"
               fullWidth
@@ -80,7 +82,7 @@ export function GenderFilterBar({ filters, setFilters, reset, showLocations = tr
           </Grid>
           <Grid size={{ xs: 6, md: 2 }}>
             <TextField
-              label="To"
+              label={t("genderFilterBar.to")}
               type="date"
               size="small"
               fullWidth
@@ -99,12 +101,12 @@ export function GenderFilterBar({ filters, setFilters, reset, showLocations = tr
               getOptionLabel={(c) => c.name}
               isOptionEqualToValue={(a, b) => a.camera_id === b.camera_id}
               onChange={(_, value) => setFilters({ camera_ids: value.map((c) => c.camera_id) })}
-              renderInput={(params) => <TextField {...params} label="Cameras" placeholder="All" />}
+              renderInput={(params) => <TextField {...params} label={t("genderFilterBar.cameras")} placeholder={t("genderFilterBar.all")} />}
             />
           </Grid>
           <Grid size={{ xs: 12, md: "auto" }}>
             <Button startIcon={<FilterAltOffIcon />} onClick={reset} color="inherit">
-              Reset
+              {t("genderFilterBar.reset")}
             </Button>
           </Grid>
         </Grid>
@@ -130,7 +132,7 @@ export function GenderFilterBar({ filters, setFilters, reset, showLocations = tr
                   }))
                 }
                 renderInput={(params) => (
-                  <TextField {...params} label={level.label} placeholder="All" />
+                  <TextField {...params} label={level.label} placeholder={t("genderFilterBar.all")} />
                 )}
               />
             ))}
