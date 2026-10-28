@@ -154,7 +154,7 @@ export function ForgotPasswordPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           error={Boolean(problem)}
-          helperText={problem ? t(problem) : t("password.hint")}
+          helperText={problem ? t(problem) : t(passwordPolicy.hint || "password.hint")}
           disabled={submitting}
         />
         <TextField

@@ -15,9 +15,11 @@ export function strictPolicy(value) {
   return null;
 }
 
-/** 8+ characters and three of: upper, lower, digit, symbol (blocked-exit). */
+/** 10+ characters and three of: upper, lower, digit, symbol (blocked-exit). */
 export function threeOfFourPolicy(value) {
-  if (value.length < 8) return "password.tooShort";
+  if (value.length < 10) return "password.tooShort10";
   const classes = [/[A-Z]/, /[a-z]/, /[0-9]/, SYMBOL].filter((re) => re.test(value)).length;
   return classes >= 3 ? null : "password.needThreeClasses";
 }
+// The hint shown under the field before anything is typed, per policy.
+threeOfFourPolicy.hint = "password.hintThreeOfFour";

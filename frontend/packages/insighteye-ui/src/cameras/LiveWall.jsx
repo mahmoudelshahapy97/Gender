@@ -50,10 +50,13 @@ function writePref(key, value) {
  * viewers per camera (and a 16-tile wall would hold 16 sockets); the camera's
  * own page still has the full-rate stream.
  */
-function Tile({ camera, seconds, snapshotUrl, to }) {
+function Tile({ camera, seconds, snapshotUrl, loadSnapshot, to }) {
   const { t } = useTranslation("common");
   const [tick, setTick] = useState(() => Date.now());
   const [failed, setFailed] = useState(false);
+  // For APIs that authenticate images by header: an object URL per frame,
+  // revoked when the next one replaces it.
+  const [loaded, setLoaded] = useState(null);
   useEffect(() => {
     if (!camera.running) return undefined;
     const timer = setInterval(() => {
@@ -62,14 +65,34 @@ function Tile({ camera, seconds, snapshotUrl, to }) {
     return () => clearInterval(timer);
   }, [camera.running, seconds]);
 
+  useEffect(() => {
+    if (!loadSnapshot || !camera.running) return undefined;
+    const controller = new AbortController();
+    loadSnapshot(camera.camera_id, { signal: controller.signal })
+      .then((url) => {
+        if (controller.signal.aborted) return URL.revokeObjectURL(url);
+        setFailed(false);
+        setLoaded((previous) => {
+          if (previous) URL.revokeObjectURL(previous);
+          return url;
+        });
+      })
+      .catch(() => !controller.signal.aborted && setFailed(true));
+    return () => controller.abort();
+  }, [loadSnapshot, camera.camera_id, camera.running, tick]);
+
+  useEffect(() => () => loaded && URL.revokeObjectURL(loaded), [loaded]);
+
+  const src = loadSnapshot ? loaded : snapshotUrl(camera.camera_id, tick);
+
   return (
     <Card>
       <CardActionArea component={RouterLink} to={to} aria-label={camera.name}>
         <Box sx={{ position: "relative", aspectRatio: "16 / 9", bgcolor: "#05070d", display: "grid", placeItems: "center" }}>
-          {camera.running && !failed ? (
+          {camera.running && !failed && src ? (
             <Box
               component="img"
-              src={snapshotUrl(camera.camera_id, tick)}
+              src={src}
               alt=""
               onError={() => setFailed(true)}
               onLoad={() => setFailed(false)}
@@ -121,7 +144,10 @@ function Tile({ camera, seconds, snapshotUrl, to }) {
 /**
  * Every camera of the active workspace on one screen, for the security desk:
  * 1/4/9/16 tiles, refresh rate, and "only live", all remembered per browser.
- * `api.cameras.list()` resolves to [{camera_id, name, location, running}].
+ * `api.cameras.list()` resolves to [{camera_id, name, location, running}];
+ * frames come from `api.cameras.snapshotUrl(id, bust)`, or from
+ * `api.cameras.loadSnapshot(id, {signal})` (a Promise of an object URL) for
+ * APIs that authenticate images by header.
  */
 export function LiveWall({ cameraPath = (id) => `/cameras/${id}` }) {
   const { t } = useTranslation("common");
@@ -203,7 +229,14 @@ export function LiveWall({ cameraPath = (id) => `/cameras/${id}` }) {
           }}
         >
           {shown.map((c) => (
-            <Tile key={c.camera_id} camera={c} seconds={seconds} snapshotUrl={api.cameras.snapshotUrl} to={cameraPath(c.camera_id)} />
+            <Tile
+              key={c.camera_id}
+              camera={c}
+              seconds={seconds}
+              snapshotUrl={api.cameras.snapshotUrl}
+              loadSnapshot={api.cameras.loadSnapshot}
+              to={cameraPath(c.camera_id)}
+            />
           ))}
         </Box>
       ) : (
