@@ -131,7 +131,9 @@
     "needLower": "Add a lowercase letter",
     "needDigit": "Add a digit",
     "needSymbol": "Add a special character",
-    "needThreeClasses": "Use three of: uppercase, lowercase, digit, symbol"
+    "needThreeClasses": "Use three of: uppercase, lowercase, digit, symbol",
+    "tooShort10": "At least 10 characters",
+    "hintThreeOfFour": "At least 10 characters, with three of: lowercase, uppercase, digit, symbol."
   },
   "reset": {
     "title": "Reset your password",

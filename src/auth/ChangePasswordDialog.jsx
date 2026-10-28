@@ -75,7 +75,7 @@ export function ChangePasswordDialog({ open, onClose }) {
               value={next}
               onChange={(e) => setNext(e.target.value)}
               error={Boolean(problem)}
-              helperText={problem ? t(problem) : t("password.hint")}
+              helperText={problem ? t(problem) : t(passwordPolicy.hint || "password.hint")}
               autoComplete="new-password"
               fullWidth
             />
