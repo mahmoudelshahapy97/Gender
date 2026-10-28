@@ -167,7 +167,8 @@ test("a user changes their own password from the account menu", async ({ browser
 
     // A wrong current password is refused in the dialog, not silently.
     await dialog.getByLabel("Current password").fill("Wrong!12345");
-    await dialog.getByLabel("New password").fill(NEW_PASSWORD);
+    await dialog.getByLabel("New password", { exact: true }).fill(NEW_PASSWORD);
+    await dialog.getByLabel("Repeat new password").fill(NEW_PASSWORD);
     await dialog.getByRole("button", { name: "Change password" }).click();
     await expect(dialog.getByRole("alert")).toBeVisible();
 

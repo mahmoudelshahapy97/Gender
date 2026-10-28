@@ -85,11 +85,11 @@ test("a crowding alert set on the form arrives live, in the bell and the list", 
 
   // No reload: the toast and the badge come down the event stream.
   await expect(page.getByRole("alert").filter({ hasText: CROWDING })).toBeVisible({ timeout: 180_000 });
-  const bell = page.getByRole("button", { name: /Notifications, \d+ unread/ });
-  await expect(bell).toBeVisible();
+  const bell = page.getByRole("button", { name: "Notifications", exact: true });
+  await expect(page.getByTestId("notification-badge")).toHaveText(/\d/);
 
   await bell.click();
-  const latest = page.getByRole("list", { name: "Latest notifications" });
+  const latest = page.getByRole("presentation").getByRole("list", { name: "Notifications" });
   const item = latest.getByRole("button").filter({ hasText: CROWDING }).first();
   await expect(item).toBeVisible();
   await expect(item).toContainText("above the limit of 0");
@@ -153,10 +153,10 @@ test("an opted-in account is mailed, and a camera that cannot connect is reporte
   if (mail) {
     await page.goto("/");
     await page.getByRole("button", { name: "Account menu" }).click();
-    const toggle = page.getByRole("menuitem", { name: /Email me alerts/ });
+    const toggle = page.getByRole("menuitem", { name: /Email me new alerts/ });
     await expect(toggle).toBeEnabled();
     if (!(await toggle.getByRole("checkbox").isChecked())) await toggle.click();
-    await expect(page.getByText(/Alerts will be mailed to/)).toBeVisible();
+    await expect(page.getByText(/New alerts will be emailed to you/)).toBeVisible();
     await page.keyboard.press("Escape");
   }
 
