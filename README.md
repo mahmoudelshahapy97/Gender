@@ -57,8 +57,14 @@ docker compose up -d --build
 | RTSP demo | rtsp://localhost:8557/gender | mediamtx looping `backend/videos/gender.mp4` |
 | MinIO | http://localhost:9003 | console; the S3 API is on 9002 |
 
-Sign in as the bootstrap admin from `backend/.env` (`admin` / `ChangeMe!123` by default) and
-change the password.
+Sign in to the console as the bootstrap admin:
+
+| Username | Email | Password |
+|---|---|---|
+| `admin` | `admin@insighteye.local` | `WCtnCGXUGHqDBrso!A1` |
+
+These are the values from this machine's `backend/.env`. A fresh install uses whatever its own
+`backend/.env` sets (`admin` / `ChangeMe!123` by default); change the password after signing in.
 
 The ports avoid the other stacks on this machine (lost-found holds 5436/8003/8082/8556/9000/9001).
 You can override them in the root `.env` with `POSTGRES_HOST_PORT`, `API_HOST_PORT`,
