@@ -25,6 +25,10 @@ Pillow
 ultralytics
 torch
 torchvision
+# ByteTrack's assignment step. Ultralytics imports it lazily and tries to
+# pip-install it on first use, which cannot take effect in the running process,
+# so every camera worker failed with "No module named 'lap'".
+lap==0.5.13
 
 # Object storage (images and videos)
 minio
